@@ -1,0 +1,44 @@
+# Git ignore for VEWRA Repository
+
+# IDE & Editor
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+Thumbs.db
+
+# Flutter & Dart
+**/build/
+**/.dart_tool/
+**/.pub-cache/
+**/.pub/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/ios/Flutter/.last_build_id
+**/coverage/
+
+# Android Studio / Gradle
+**/android/.gradle/
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/android/local.properties
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.env
+.env.local
+*.sqlite3
+
+# Logs & Cache
+*.log
+.system_generated/
