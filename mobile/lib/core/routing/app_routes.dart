@@ -2,6 +2,7 @@
 class AppRoutes {
   AppRoutes._();
 
+  static const String root = '/';
   static const String splash = '/splash';
   static const String welcome = '/welcome';
   static const String login = '/login';
@@ -12,6 +13,10 @@ class AppRoutes {
   static const String tasks = '/tasks';
   static const String taskDetails = '/task-details';
   static const String browser = '/browser';
+  static const String rewards = '/rewards';
+  static const String marketplace = '/marketplace';
+  static const String community = '/community';
+  static const String verification = '/verification';
   static const String wallet = '/wallet';
   static const String profile = '/profile';
   static const String settings = '/settings';

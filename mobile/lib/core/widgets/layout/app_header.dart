@@ -5,7 +5,7 @@ import '../../constants/app_constants.dart';
 import '../buttons/app_icon_button.dart';
 
 /// Reusable top screen header with optional back button, title, subtitle, and custom action widgets.
-class AppHeader extends StatelessWidget {
+class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final String? subtitle;
   final bool showBackButton;
@@ -22,11 +22,15 @@ class AppHeader extends StatelessWidget {
   });
 
   @override
+  Size get preferredSize => const Size.fromHeight(56.0);
+
+  @override
   Widget build(BuildContext context) {
-    return Padding(
+    return Container(
+      color: AppColors.background,
       padding: const EdgeInsets.symmetric(
         horizontal: AppConstants.space16,
-        vertical: AppConstants.space12,
+        vertical: AppConstants.space8,
       ),
       child: Row(
         children: [
@@ -41,6 +45,7 @@ class AppHeader extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(

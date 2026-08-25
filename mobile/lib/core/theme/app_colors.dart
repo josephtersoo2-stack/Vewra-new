@@ -11,6 +11,7 @@ class AppColors {
   static const Color surface = Color(0xFF1A1F2C);
   static const Color surfaceElevated = Color(0xFF22283A);
   static const Color surfaceLight = Color(0xFF2D344B);
+  static const Color card = Color(0xFF1E2333);
 
   // Brand Accents
   static const Color primary = Color(0xFF6366F1); // Electric Indigo
@@ -18,12 +19,15 @@ class AppColors {
   static const Color primaryDark = Color(0xFF4F46E5);
   static const Color secondary = Color(0xFF06B6D4); // Cyan
   static const Color secondaryLight = Color(0xFF22D3EE);
+  static const Color cyan = Color(0xFF06B6D4);
 
   // Status & Feedback
   static const Color success = Color(0xFF10B981); // Emerald
   static const Color successLight = Color(0xFF34D399);
+  static const Color emerald = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B); // Amber / Gold (Coins)
   static const Color warningLight = Color(0xFFFBBF24);
+  static const Color amber = Color(0xFFFFB800);
   static const Color error = Color(0xFFEF4444); // Red
   static const Color errorLight = Color(0xFFF87171);
   static const Color info = Color(0xFF3B82F6);

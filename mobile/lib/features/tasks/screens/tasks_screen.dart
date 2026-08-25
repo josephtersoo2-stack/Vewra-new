@@ -9,7 +9,7 @@ import '../../../models/task_model.dart';
 import '../../../core/widgets/feedback/app_empty_state.dart';
 import '../widgets/task_card.dart';
 
-/// Task Discovery and Listing screen with category filters and search.
+/// Task & Earning Discovery screen with Video Tasks, Surveys, Social Tasks, and Challenges.
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
 
@@ -56,7 +56,7 @@ class _TasksScreenState extends State<TasksScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                AppStrings.tasks,
+                'Earn & Tasks',
                 style: AppTypography.headlineMedium.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -87,7 +87,7 @@ class _TasksScreenState extends State<TasksScreen> {
             ],
           ),
         ),
-        // Category Pills
+        // Category Pills (Video Tasks, Surveys, Social Tasks, Challenges)
         SizedBox(
           height: 38,
           child: ListView.builder(

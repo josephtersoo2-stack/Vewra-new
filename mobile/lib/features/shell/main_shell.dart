@@ -3,10 +3,11 @@ import '../../core/widgets/layout/app_scaffold.dart';
 import '../../core/widgets/layout/app_bottom_nav.dart';
 import '../home/screens/home_screen.dart';
 import '../tasks/screens/tasks_screen.dart';
+import '../rewards/screens/rewards_screen.dart';
 import '../wallet/screens/wallet_screen.dart';
 import '../profile/screens/profile_screen.dart';
 
-/// Main Application Shell maintaining persistent bottom navigation across core feature tabs.
+/// Main Application Shell maintaining persistent bottom navigation across 5 core feature tabs.
 class MainShell extends StatefulWidget {
   final int initialIndex;
 
@@ -42,9 +43,11 @@ class _MainShellState extends State<MainShell> {
         children: [
           HomeScreen(
             onSwitchToTasks: () => _onTabSelected(1),
-            onSwitchToWallet: () => _onTabSelected(2),
+            onSwitchToRewards: () => _onTabSelected(2),
+            onSwitchToWallet: () => _onTabSelected(3),
           ),
           const TasksScreen(),
+          const RewardsScreen(),
           const WalletScreen(),
           const ProfileScreen(),
         ],

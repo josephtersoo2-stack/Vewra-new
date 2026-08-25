@@ -9,6 +9,9 @@ import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/shell/main_shell.dart';
 import '../../features/tasks/screens/task_details_screen.dart';
 import '../../features/browser/screens/browser_screen.dart';
+import '../../features/marketplace/screens/marketplace_screen.dart';
+import '../../features/community/screens/community_screen.dart';
+import '../../features/verification/screens/verification_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../widgets/feedback/app_error_state.dart';
 
@@ -18,6 +21,7 @@ class AppRouter {
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
+      case AppRoutes.root:
       case AppRoutes.splash:
         return _buildRoute(const SplashScreen(), settings);
 
@@ -42,11 +46,14 @@ class AppRouter {
       case AppRoutes.tasks:
         return _buildRoute(const MainShell(initialIndex: 1), settings);
 
-      case AppRoutes.wallet:
+      case AppRoutes.rewards:
         return _buildRoute(const MainShell(initialIndex: 2), settings);
 
-      case AppRoutes.profile:
+      case AppRoutes.wallet:
         return _buildRoute(const MainShell(initialIndex: 3), settings);
+
+      case AppRoutes.profile:
+        return _buildRoute(const MainShell(initialIndex: 4), settings);
 
       case AppRoutes.taskDetails:
         final task = settings.arguments is TaskModel ? settings.arguments as TaskModel : null;
@@ -55,6 +62,15 @@ class AppRouter {
       case AppRoutes.browser:
         final task = settings.arguments is TaskModel ? settings.arguments as TaskModel : null;
         return _buildRoute(BrowserScreen(task: task), settings);
+
+      case AppRoutes.marketplace:
+        return _buildRoute(const MarketplaceScreen(), settings);
+
+      case AppRoutes.community:
+        return _buildRoute(const CommunityScreen(), settings);
+
+      case AppRoutes.verification:
+        return _buildRoute(const VerificationScreen(), settings);
 
       case AppRoutes.settings:
         return _buildRoute(const SettingsScreen(), settings);

@@ -16,13 +16,15 @@ void main() {
         ),
       );
 
-      expect(find.text(AppStrings.tasks), findsOneWidget);
+      expect(find.text('Earn & Tasks'), findsOneWidget);
       expect(find.byType(TextField), findsOneWidget);
-      expect(find.widgetWithText(ChoiceChip, 'Tech'), findsOneWidget);
-      expect(find.widgetWithText(ChoiceChip, 'Gaming'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Video Tasks'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Surveys'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Social Tasks'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Challenges'), findsOneWidget);
 
       // Tap category chip
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Tech'));
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Video Tasks'));
       await tester.pump();
       expect(find.text(DummyDataService.tasks.first.title), findsOneWidget);
     });

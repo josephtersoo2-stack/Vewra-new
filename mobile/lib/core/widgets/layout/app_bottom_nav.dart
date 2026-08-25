@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../constants/app_constants.dart';
 
-/// Reusable modern floating-style bottom navigation bar.
+/// Reusable modern floating-style bottom navigation bar with 5 ecosystem tabs.
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -33,8 +33,8 @@ class AppBottomNav extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppConstants.space8,
-            vertical: AppConstants.space8,
+            horizontal: AppConstants.space4,
+            vertical: AppConstants.space6,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -49,16 +49,22 @@ class AppBottomNav extends StatelessWidget {
                 index: 1,
                 icon: Icons.play_circle_outline_rounded,
                 activeIcon: Icons.play_circle_rounded,
-                label: 'Tasks',
+                label: 'Earn',
               ),
               _buildNavItem(
                 index: 2,
+                icon: Icons.emoji_events_outlined,
+                activeIcon: Icons.emoji_events_rounded,
+                label: 'Rewards',
+              ),
+              _buildNavItem(
+                index: 3,
                 icon: Icons.account_balance_wallet_outlined,
                 activeIcon: Icons.account_balance_wallet_rounded,
                 label: 'Wallet',
               ),
               _buildNavItem(
-                index: 3,
+                index: 4,
                 icon: Icons.person_outline_rounded,
                 activeIcon: Icons.person_rounded,
                 label: 'Profile',
@@ -84,8 +90,8 @@ class AppBottomNav extends StatelessWidget {
       child: AnimatedContainer(
         duration: AppConstants.animFast,
         padding: const EdgeInsets.symmetric(
-          horizontal: AppConstants.space16,
-          vertical: AppConstants.space8,
+          horizontal: AppConstants.space10,
+          vertical: AppConstants.space6,
         ),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,

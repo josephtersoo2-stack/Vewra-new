@@ -11,17 +11,31 @@ class UserModel {
   final int totalMinutesWatched;
   final int streakDays;
 
+  // Retrofit attributes for Level, Trust & Verification
+  final int level;
+  final int xp;
+  final int xpNextLevel;
+  final int trustScore;
+  final String verificationStatus; // e.g. 'Basic', 'Verified', 'Trusted'
+  final String subscriptionTier; // e.g. 'Free', 'Premium', 'Creator', 'Business'
+
   const UserModel({
     required this.id,
     required this.username,
     required this.email,
     this.avatarUrl,
     this.membershipTier = 'Gold Explorer',
-    this.totalCoins = 2450,
-    this.fiatBalance = 24.50,
-    this.tasksCompleted = 48,
-    this.totalMinutesWatched = 240,
-    this.streakDays = 5,
+    this.totalCoins = 3450,
+    this.fiatBalance = 34.50,
+    this.tasksCompleted = 54,
+    this.totalMinutesWatched = 320,
+    this.streakDays = 7,
+    this.level = 14,
+    this.xp = 2450,
+    this.xpNextLevel = 3000,
+    this.trustScore = 96,
+    this.verificationStatus = 'Verified',
+    this.subscriptionTier = 'Premium',
   });
 
   UserModel copyWith({
@@ -35,6 +49,12 @@ class UserModel {
     int? tasksCompleted,
     int? totalMinutesWatched,
     int? streakDays,
+    int? level,
+    int? xp,
+    int? xpNextLevel,
+    int? trustScore,
+    String? verificationStatus,
+    String? subscriptionTier,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -47,6 +67,12 @@ class UserModel {
       tasksCompleted: tasksCompleted ?? this.tasksCompleted,
       totalMinutesWatched: totalMinutesWatched ?? this.totalMinutesWatched,
       streakDays: streakDays ?? this.streakDays,
+      level: level ?? this.level,
+      xp: xp ?? this.xp,
+      xpNextLevel: xpNextLevel ?? this.xpNextLevel,
+      trustScore: trustScore ?? this.trustScore,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      subscriptionTier: subscriptionTier ?? this.subscriptionTier,
     );
   }
 }
