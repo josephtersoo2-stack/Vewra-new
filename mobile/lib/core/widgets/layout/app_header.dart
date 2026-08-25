@@ -4,12 +4,14 @@ import '../../theme/app_typography.dart';
 import '../../constants/app_constants.dart';
 import '../buttons/app_icon_button.dart';
 
-/// Reusable top screen header with optional back button, title, subtitle, and custom action widgets.
+/// Reusable top screen header with optional back button, menu button, title, subtitle, and custom action widgets.
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final String? subtitle;
   final bool showBackButton;
+  final bool showMenuButton;
   final VoidCallback? onBack;
+  final VoidCallback? onMenu;
   final List<Widget>? actions;
 
   const AppHeader({
@@ -17,7 +19,9 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     required this.title,
     this.subtitle,
     this.showBackButton = false,
+    this.showMenuButton = false,
     this.onBack,
+    this.onMenu,
     this.actions,
   });
 
@@ -34,6 +38,15 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       ),
       child: Row(
         children: [
+          if (showMenuButton) ...[
+            AppIconButton(
+              icon: Icons.menu_rounded,
+              iconSize: 22,
+              size: 40,
+              onPressed: onMenu ?? () => Scaffold.of(context).openDrawer(),
+            ),
+            const SizedBox(width: AppConstants.space8),
+          ],
           if (showBackButton) ...[
             AppIconButton(
               icon: Icons.arrow_back_ios_new_rounded,

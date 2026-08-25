@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/layout/app_scaffold.dart';
 import '../../core/widgets/layout/app_bottom_nav.dart';
+import '../../core/widgets/layout/app_drawer.dart';
 import '../home/screens/home_screen.dart';
 import '../tasks/screens/tasks_screen.dart';
 import '../rewards/screens/rewards_screen.dart';
 import '../wallet/screens/wallet_screen.dart';
 import '../profile/screens/profile_screen.dart';
 
-/// Main Application Shell maintaining persistent bottom navigation across 5 core feature tabs.
+/// Main Application Shell maintaining persistent bottom navigation across 5 core feature tabs
+/// and providing the ecosystem side drawer.
 class MainShell extends StatefulWidget {
   final int initialIndex;
 
@@ -38,6 +40,9 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
+      drawer: AppDrawer(
+        onNavigateTab: (index) => _onTabSelected(index),
+      ),
       body: IndexedStack(
         index: _currentIndex,
         children: [

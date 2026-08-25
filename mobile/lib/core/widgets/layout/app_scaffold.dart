@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 
-/// Centralized scaffold wrapper providing background gradient and standard padding.
+/// Centralized scaffold wrapper providing background gradient, drawer, and standard padding.
 class AppScaffold extends StatelessWidget {
   final Widget body;
   final PreferredSizeWidget? appBar;
+  final Widget? drawer;
   final Widget? bottomNavigationBar;
   final Widget? floatingActionButton;
   final bool safeAreaTop;
@@ -16,6 +17,7 @@ class AppScaffold extends StatelessWidget {
     super.key,
     required this.body,
     this.appBar,
+    this.drawer,
     this.bottomNavigationBar,
     this.floatingActionButton,
     this.safeAreaTop = true,
@@ -29,6 +31,7 @@ class AppScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: backgroundColor ?? AppColors.background,
       appBar: appBar,
+      drawer: drawer,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       body: SafeArea(
         top: safeAreaTop,
