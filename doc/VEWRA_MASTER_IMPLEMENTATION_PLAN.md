@@ -1,513 +1,470 @@
-# VEWRA Master Implementation Plan (Fresh Project)
+# VEWRA PRODUCT ECOSYSTEM AND FULL IMPLEMENTATION PLAN
 
 ## Version
-
 1.0
 
-## Project Status
+## Purpose
 
-Greenfield Development
+This document defines the expanded VEWRA product vision and technical direction.
 
-## Development Approach
+VEWRA is a global AI-powered digital economy ecosystem where users earn, spend, trade, create, promote, learn, compete, and access digital services.
 
-UI-first, feature-driven, continuously integrated development.
+The platform must support users, creators, and businesses worldwide.
 
-------------------------------------------------------------------------
+---
 
-# 1. Project Vision
+# 1. Core Product Vision
 
-VEWRA is a cross-platform rewards platform where users complete verified
-activities through a controlled mobile experience and earn rewards
-managed by a secure backend system.
+VEWRA combines:
 
-The project will be rebuilt from the ground up using a modular
-architecture that supports future growth into memberships, referrals,
-marketplaces, analytics, automation, and intelligent reward systems.
+- Rewards ecosystem
+- Creator economy
+- Promotion marketplace
+- Digital marketplace
+- AI engagement
+- Gamification
+- Community
+- Advertising
+- Subscriptions
 
-The development process will follow a strict vertical feature delivery
-model:
+Users should have reasons to return daily through earning, competition, learning, and social engagement.
 
-1.  Design the user experience.
-2.  Build the mobile interface.
-3.  Create the backend capability required by that interface.
-4.  Connect the backend function to the application.
-5.  Test the complete user journey.
-6.  Improve and document before moving to the next feature.
+---
 
-No backend feature should exist without a working application connection
-unless it is an internal service required for future functionality.
+# 2. Currency and Wallet Strategy
 
-------------------------------------------------------------------------
+## VEWRA Coins
 
-# 2. AI Agent Development Rules
+Coins are the internal platform currency.
 
-This project will be developed with AI coding agents including Google
-Antigravity and VS Code AI agents.
+Users earn coins from:
 
-Every agent working on the project must follow these rules:
+- Tasks
+- Videos
+- AI quizzes
+- Challenges
+- Referrals
+- Community activities
 
--   Understand existing architecture before modifying files.
--   Do not create duplicate systems.
--   Do not introduce unnecessary dependencies.
--   Keep features modular.
--   Write clean production-quality code.
--   Add tests with every major function.
--   Document architectural decisions.
--   Never hardcode secrets.
--   Never hardcode environment-specific values.
--   Use environment variables for configuration.
--   Keep production migration paths open.
--   Avoid database-specific implementations.
+Coins can be used for:
 
-Business logic must remain separate from:
+- Promotions
+- Digital products
+- Marketplace purchases
+- Premium features
 
--   UI components
--   API controllers
--   database models
--   external services
+## Global Currency
 
-------------------------------------------------------------------------
+USD will be the standard platform accounting currency.
 
-# 3. Technology Direction
+Users may view local currency equivalents.
 
-## Mobile Application
+The system must separate:
 
-Framework: - Flutter
+- Internal coin value
+- Platform accounting currency
+- Local display currency
+- Payment currency
 
-Architecture: - Feature-based architecture
+---
 
-Recommended tools: - Riverpod or Bloc - Dio networking - Secure
-storage - Local caching - flutter_inappwebview
+# 3. Withdrawal System
 
-## Backend
+Supported withdrawal options:
 
-Framework: - Django - Django REST Framework
+- USDT crypto
+- Supported crypto methods
+- Gift cards
+- Local bank withdrawal
 
-Services:
-
--   Authentication
--   User management
--   Task management
--   Tracking
--   Rewards
--   Wallet
--   Membership preparation
--   Referral preparation
-
-## Database Strategy
-
-Local Development:
-
--   MySQL will be used for local development and testing.
-
-Production:
-
--   PostgreSQL will be used when deployed to VPS infrastructure.
-
-Rules:
-
--   Use Django ORM.
--   Avoid raw SQL unless absolutely necessary.
--   Never use MySQL-only features.
--   Database design must remain PostgreSQL compatible.
--   Environment configuration must control database selection.
-
-The application must be able to switch databases through configuration
-without rewriting application logic.
-
-------------------------------------------------------------------------
-
-# 4. Repository Structure
-
-Recommended structure:
-
-    vewra/
-
-    ├── backend/
-    ├── mobile/
-    ├── admin/
-    ├── docs/
-    ├── docker/
-    ├── scripts/
-    └── README.md
-
-------------------------------------------------------------------------
-
-# 5. Development Methodology
-
-Development will happen through complete feature cycles.
+Local withdrawals include additional processing fees.
 
 Example:
 
-## Feature: User Login
+Withdrawal request:
 
-Step 1: Design login screens.
+$50
 
-Step 2: Build Flutter UI.
+Processing fee:
 
-Step 3: Create backend authentication API.
+$2
 
-Step 4: Connect Flutter to API.
+User receives:
 
-Step 5: Test login flow.
+$48
 
-Step 6: Document completion.
+---
 
-Then move to the next feature.
+# 4. Verification and Trust System
 
-------------------------------------------------------------------------
+## Basic User
 
-# 6. Phase 0: Foundation
+Requirements:
 
-Goal: Create a stable development environment.
+- Email
+- Phone
 
-Tasks:
+Limit:
 
--   Create repository structure.
--   Configure Flutter project.
--   Configure Django project.
--   Configure environment files.
--   Configure Docker development environment.
--   Configure database switching.
--   Configure code formatting.
--   Configure testing framework.
+Maximum $5 monthly withdrawal.
 
-Deliverables:
+## Verified User
 
--   Application launches.
--   Backend runs.
--   Database connects.
--   Mobile app communicates with backend.
+Requirements:
 
-------------------------------------------------------------------------
+- Government ID
+- Selfie verification
+- Phone verification
 
-# 7. Phase 1: Application UI/UX Foundation
+Benefits:
 
-This phase starts before backend development.
+- Normal withdrawal limits
+- Marketplace access
 
-Goal: Create the complete visual experience.
+## Trusted User
 
-Screens:
+Requirements:
 
-## Authentication
+- Good account history
+- Activity score
+- Trust score
 
--   Splash screen
--   Welcome screen
--   Login
--   Registration
--   Password recovery
+Benefits:
 
-## Main Application
+- Higher limits
+- Selling privileges
 
--   Home dashboard
--   Task listing
--   Task details
--   Browser screen
--   Wallet screen
--   Profile screen
--   Settings screen
+---
 
-## UI System
+# 5. Fraud Prevention System
 
-Create:
+VEWRA must protect the economy.
 
--   Colour system
--   Typography
--   Components
--   Buttons
--   Cards
--   Navigation
--   Loading states
--   Error states
--   Empty states
+The app should detect:
 
-The application should feel complete before backend wiring begins.
+## VPN Usage
 
-------------------------------------------------------------------------
+When VPN is detected:
 
-# 8. Phase 2: Authentication Vertical Feature
+- Notify user
+- Request disabling
+- Restrict sensitive actions
 
-Build complete authentication.
+## Rooted/Jailbroken Devices
 
-Mobile:
+Detect compromised devices.
 
--   Login UI
--   Registration UI
--   Token storage
--   Session handling
+Restrict:
 
-Backend:
+- Withdrawals
+- Coin trading
+- Verification
 
--   User model
--   Authentication APIs
--   JWT system
+## Developer Mode
 
-Integration:
+If enabled:
 
--   Connect screens to APIs.
--   Test registration.
--   Test login.
--   Test logout.
--   Test expired sessions.
+- Warn user
+- Request disabling
+- Block sensitive backend access
 
-------------------------------------------------------------------------
+## Application Integrity
 
-# 9. Phase 3: User Profile System
+Backend should reject:
 
-Mobile:
+- Modified apps
+- Repacked APKs
+- Tampered clients
+- Unauthorized connections
 
--   Profile page
--   User information display
--   Settings interface
+The backend remains the final authority.
 
-Backend:
+---
 
--   Profile model
--   Profile APIs
+# 6. AI Video Engagement
 
-Integration:
+Videos become interactive.
 
--   Load user data.
--   Update profile.
--   Test changes.
+AI analyses:
 
-------------------------------------------------------------------------
+- Transcript
+- Topics
+- Important timestamps
 
-# 10. Phase 4: YouTube Task System
+After viewing:
 
-Core VEWRA feature.
+AI creates:
 
-Backend:
+- Questions
+- Quizzes
+- Engagement checks
 
-VideoTask:
+Users earn additional rewards for correct answers.
 
--   title
--   YouTube URL
--   video ID
--   keywords
--   thumbnail
--   reward rules
--   status
+---
 
-Mobile:
+# 7. Promotion Marketplace
 
--   Task list
--   Task details
--   Search instructions
--   Start task flow
+Two systems:
 
-Integration:
+## Self-Service Campaigns
 
-User can:
+Users create campaigns.
 
--   View tasks.
--   Open task.
--   Receive instructions.
--   Start watching.
+Goals:
 
-------------------------------------------------------------------------
+- Views
+- Likes
+- Comments
+- Subscribers
+- Watch time
+- Shares
 
-# 11. Phase 5: In-App Browser and Tracking Engine
+Creator controls:
 
-Mobile:
+- Budget
+- Reward
+- Duration
 
-Technology:
+VEWRA earns platform fees.
 
--   flutter_inappwebview
+## VEWRA Managed Promotion
+
+Users submit campaigns.
+
+They select goals.
+
+VEWRA calculates pricing.
+
+Premium subscribers receive discounts.
+
+---
+
+# 8. Coin Marketplace
+
+Users can buy and sell coins.
+
+Selling requires:
+
+- Minimum level
+- Account age
+- Verification
+- Trust score
+
+Revenue:
+
+- Transaction fees
+- Listing fees
+- Featured listings
+
+---
+
+# 9. Gamification Engine
 
 Features:
 
--   YouTube browsing.
--   JavaScript injection.
--   Video detection.
--   Playback tracking.
--   Session recovery.
+- Levels
+- XP
+- Streaks
+- Badges
+- Quizzes
+- Spin wheel
+- Scratch cards
+- Challenges
+- Leaderboards
+
+---
+
+# 10. Prize and Competition Engine
+
+Admin controlled.
+
+Weekly:
+
+- Cash rewards
+
+Monthly:
+
+- Cash and physical gifts
+
+Yearly:
+
+- VEWRA awards
+
+Categories:
+
+- Top User
+- Top Creator
+- Top Promoter
+- Community Champion
+
+---
+
+# 11. Community System
+
+Development stages:
+
+Stage One:
+
+- Feed
+- Posts
+- Comments
+- Reactions
+
+Stage Two:
+
+- Groups
+- Creator communities
+- Learning communities
+
+Stage Three:
+
+- Private communities
+- Messaging
+- Fan clubs
+
+AI moderation:
+
+- Spam detection
+- Scam detection
+- Abuse prevention
+
+---
+
+# 12. Digital Marketplace
+
+Services:
+
+- Airtime
+- Data
+- Gift cards
+- Digital products
+- Courses
+- Software
+- Subscriptions
+
+Global structure:
+
+Country → Provider → Currency → Payment
+
+---
+
+# 13. Subscription Engine
+
+Plans:
+
+Free
+
+Premium
+
+Creator
+
+Business
+
+Benefits include:
+
+- Lower fees
+- Higher limits
+- AI tools
+- Analytics
+- More opportunities
+
+---
+
+# 14. Revenue Model
+
+VEWRA earns from:
+
+- Promotion fees
+- Subscription fees
+- Advertising
+- Coin marketplace fees
+- Coin sales
+- Withdrawal fees
+- Digital marketplace commissions
+- SMM services
+- AI tools
+- Creator marketplace commissions
+- Sponsored challenges
+- Business accounts
+
+---
+
+# 15. Technical Architecture
 
 Backend:
 
-WatchSession:
+Python Django + Django REST Framework
 
--   user
--   task
--   progress
--   completion status
+Admin:
 
-Integration:
-
-Test:
-
--   Correct video detection.
--   Wrong video rejection.
--   Resume watching.
--   Progress saving.
-
-------------------------------------------------------------------------
-
-# 12. Phase 6: Reward and Wallet System
-
-Backend:
-
-Wallet:
-
--   balance
-
-WalletTransaction:
-
--   earning history
--   adjustments
--   references
-
-Reward engine:
-
--   Per time rewards
--   Watch completion rewards
--   Target rewards
+React Dashboard
 
 Mobile:
 
--   Wallet screen
--   Transaction history
+Flutter
 
-Integration:
+Database:
 
-Complete:
+Local development:
+MySQL
 
-Watch video → validate → reward → update wallet.
+Production:
+PostgreSQL
 
-------------------------------------------------------------------------
+Use Django ORM only.
 
-# 13. Phase 7: Admin System
+Avoid database-specific implementation.
 
-Initial:
+Core backend modules:
 
-Django Admin.
+```
+users
+authentication
+verification
+trust
+wallet
+payments
+economy
+tasks
+tracking
+rewards
+gamification
+marketplace
+campaigns
+subscriptions
+community
+advertising
+ai_services
+analytics
+```
 
-Features:
+---
 
--   Manage users.
--   Manage videos.
--   View sessions.
--   View rewards.
+# 16. Development Method
 
-Future:
+Every feature follows:
 
-Custom administration dashboard.
+UI Template
 
-------------------------------------------------------------------------
+↓
 
-# 14. Future Expansion Roadmap
+Backend Function
 
-## Phase 8
+↓
 
-Membership:
+API Connection
 
--   Free plans
--   Paid plans
--   Feature restrictions
--   Subscription management
+↓
 
-## Phase 9
+Testing
 
-Referral System:
+↓
 
--   Referral codes
--   Referral rewards
--   Anti-abuse controls
+Template Update
 
-## Phase 10
+↓
 
-Gamification:
+Next Feature
 
--   Daily tasks
--   Streaks
--   Achievements
--   Leaderboards
-
-## Phase 11
-
-Marketplace:
-
--   Spending coins
--   Products
--   Redeeming rewards
-
-## Phase 12
-
-Advanced Intelligence:
-
--   Recommendation engine
--   Fraud detection
--   Automated analytics
--   AI-assisted operations
-
-------------------------------------------------------------------------
-
-# 15. Testing Strategy
-
-Every feature requires:
-
-## Backend
-
--   Unit tests
--   API tests
--   Security tests
-
-## Mobile
-
--   Widget tests
--   Integration tests
-
-## Feature Acceptance
-
-A feature is complete only when:
-
--   UI works.
--   Backend works.
--   Integration works.
--   Tests pass.
--   Documentation exists.
-
-------------------------------------------------------------------------
-
-# 16. Security Requirements
-
-Mandatory:
-
--   JWT authentication.
--   Secure storage.
--   Input validation.
--   Rate limiting.
--   Server-side reward validation.
--   Transaction auditing.
--   Environment-based configuration.
-
-The client must never control rewards.
-
-------------------------------------------------------------------------
-
-# 17. Deployment Preparation
-
-Prepare for VPS deployment:
-
--   PostgreSQL migration.
--   Docker production setup.
--   Environment management.
--   Database backups.
--   Logging.
--   Monitoring.
--   CI/CD pipeline.
-
-------------------------------------------------------------------------
-
-# 18. Final Development Principle
-
-VEWRA will be built as a connected product.
-
-Every screen must eventually connect to real backend functionality.
-
-Every backend capability must have a user-facing purpose.
-
-Every completed feature must be tested before starting the next feature.
-
-The goal is not only to create working software, but to create a
-maintainable platform that can grow into a large-scale product.
+VEWRA must be built as one connected ecosystem.
