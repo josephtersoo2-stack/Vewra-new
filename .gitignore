@@ -19,12 +19,14 @@ Thumbs.db
 **/ios/Flutter/.last_build_id
 **/coverage/
 
-# Android Studio / Gradle
+# Android Studio / Gradle / Builds
 **/android/.gradle/
 **/android/app/debug/
 **/android/app/profile/
 **/android/app/release/
 **/android/local.properties
+*.apk
+*.aab
 
 # Python / Django
 __pycache__/
