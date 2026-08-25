@@ -85,6 +85,7 @@ class AppBottomNav extends StatelessWidget {
     final bool isSelected = currentIndex == index;
 
     return InkWell(
+      key: Key('nav_tab_$index'),
       onTap: () => onTap(index),
       borderRadius: AppConstants.borderRadiusMd,
       child: AnimatedContainer(

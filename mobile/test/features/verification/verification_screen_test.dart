@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vewra_mobile/features/verification/screens/verification_screen.dart';
-import 'package:vewra_mobile/services/dummy_data_service.dart';
 
 void main() {
   testWidgets('VerificationScreen renders trust score, verification levels, and upgrade action', (WidgetTester tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: VerificationScreen(),
+      const ProviderScope(
+        child: MaterialApp(
+          home: VerificationScreen(),
+        ),
       ),
     );
+    await tester.pumpAndSettle();
 
     expect(find.text('Identity & Trust Score'), findsOneWidget);
-    expect(find.text('${DummyDataService.currentUser.trustScore}%'), findsOneWidget);
-    expect(find.text('Trust Score: Excellent'), findsOneWidget);
     expect(find.text('Verification Levels & Privileges'), findsOneWidget);
 
     // Tiers
@@ -26,7 +27,7 @@ void main() {
     await tester.ensureVisible(upgradeBtn);
     await tester.pumpAndSettle();
     await tester.tap(upgradeBtn);
-    await tester.pump();
-    expect(find.byType(SnackBar), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Submit Verification ID'), findsOneWidget);
   });
 }

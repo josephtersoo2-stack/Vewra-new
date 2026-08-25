@@ -26,14 +26,16 @@ class VewraApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppStrings.appName,
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.dark,
-      initialRoute: initialRoute,
-      onGenerateRoute: AppRouter.generateRoute,
+    return ProviderScope(
+      child: MaterialApp(
+        title: AppStrings.appName,
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.darkTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.dark,
+        initialRoute: initialRoute,
+        onGenerateRoute: AppRouter.generateRoute,
+      ),
     );
   }
 }

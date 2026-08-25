@@ -1,117 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/routing/app_routes.dart';
-import '../../../services/dummy_data_service.dart';
 import '../../../core/widgets/cards/level_progress_card.dart';
+import '../../../models/user_model.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/profile_menu_item.dart';
+import '../providers/profile_provider.dart';
+import 'edit_profile_screen.dart';
+import 'subscription_screen.dart';
 
 /// User Profile Screen with level progress, verification status, trust score, and account management.
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
-  void _showEditProfile(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceElevated,
-        shape: const RoundedRectangleBorder(
-          borderRadius: AppConstants.borderRadiusLg,
-          side: BorderSide(color: AppColors.border),
-        ),
-        title: Text('Edit Profile', style: AppTypography.headlineSmall),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: TextEditingController(text: DummyDataService.currentUser.username),
-              decoration: const InputDecoration(labelText: 'Username'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: TextEditingController(text: DummyDataService.currentUser.email),
-              decoration: const InputDecoration(labelText: 'Email Address'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile changes saved!')),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSubscriptionModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surfaceElevated,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppConstants.radiusXl)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(AppConstants.space24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Membership & Subscriptions',
-                  style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w800),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  onPressed: () => Navigator.pop(ctx),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppConstants.space12),
-            const Text(
-              'Your current plan: Premium Member (\$4.99/mo). Enjoy zero withdrawal fees, 1.5x coin bonuses, and creator tools.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: AppConstants.space20),
-            Container(
-              padding: const EdgeInsets.all(AppConstants.space16),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.15),
-                borderRadius: AppConstants.borderRadiusMd,
-                border: Border.all(color: AppColors.primary),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Premium Tier (Active)', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryLight)),
-                  Icon(Icons.check_circle_rounded, color: AppColors.emerald),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppConstants.space20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -131,13 +38,16 @@ class ProfileScreen extends StatelessWidget {
             child: const Text(AppStrings.cancel),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                AppRoutes.welcome,
-                (route) => false,
-              );
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.welcome,
+                  (route) => false,
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
@@ -151,8 +61,22 @@ class ProfileScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final user = DummyDataService.currentUser;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileState = ref.watch(profileProvider);
+    final user = profileState.user ??
+        ref.watch(authProvider).user ??
+        const UserModel(
+          id: 'usr_default',
+          username: 'alex_developer',
+          email: 'alex.dev@vewra.io',
+          displayName: 'Alex Developer',
+          level: 14,
+          xp: 2450,
+          xpNextLevel: 3000,
+          trustScore: 96,
+          verificationStatus: 'Verified',
+          subscriptionTier: 'Premium',
+        );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: AppConstants.space16),
@@ -171,7 +95,12 @@ class ProfileScreen extends StatelessWidget {
           // 1. Profile Top Header
           ProfileHeader(
             user: user,
-            onEdit: () => _showEditProfile(context),
+            onEdit: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+              );
+            },
           ),
 
           const SizedBox(height: AppConstants.space16),
@@ -193,7 +122,7 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.verified_user_rounded,
             iconColor: AppColors.cyan,
             title: 'Verification & Trust Score',
-            subtitle: 'Verified Tier • Trust Score: ${user.trustScore}%',
+            subtitle: '${user.verificationStatus} Tier • Trust Score: ${user.trustScore}%',
             onTap: () => Navigator.pushNamed(context, AppRoutes.verification),
           ),
 
@@ -205,7 +134,12 @@ class ProfileScreen extends StatelessWidget {
             iconColor: AppColors.amber,
             title: 'Subscription Tier',
             subtitle: '${user.subscriptionTier} Member • Manage Benefits',
-            onTap: () => _showSubscriptionModal(context),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+              );
+            },
           ),
 
           const SizedBox(height: AppConstants.space10),
@@ -292,7 +226,7 @@ class ProfileScreen extends StatelessWidget {
             iconColor: AppColors.error,
             title: AppStrings.logout,
             subtitle: 'Sign out of your account on this device',
-            onTap: () => _showLogoutDialog(context),
+            onTap: () => _showLogoutDialog(context, ref),
           ),
           const SizedBox(height: AppConstants.space32),
         ],

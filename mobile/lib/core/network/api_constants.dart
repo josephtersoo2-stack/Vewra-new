@@ -19,11 +19,21 @@ class ApiConstants {
   static const String passwordReset = '/auth/password-reset/';
   static const String passwordResetConfirm = '/auth/password-reset/confirm/';
 
-  // User Endpoints
+  // User & Profile Endpoints
   static const String userProfile = '/users/profile/';
-  static const String updateProfile = '/users/update-profile/';
+  static const String userProfileUpdate = '/users/profile/update/';
+  static const String userUpdateProfileAlias = '/users/update-profile/';
+  static const String userStatistics = '/users/profile/statistics/';
+  static const String userPreferences = '/users/preferences/';
+  static const String userPreferencesUpdate = '/users/preferences/update/';
 
-  // Security Endpoints
-  static const String verificationStatus = '/security/verification/';
+  // Security & Verification Endpoints
+  static const String verificationStatus = '/security/verification/status/';
+  static const String verificationSubmit = '/security/verification/submit/';
+  static const String trustHistory = '/security/trust/history/';
   static const String registerDevice = '/security/device/';
+
+  // Subscriptions Endpoints
+  static const String subscriptionPlans = '/subscriptions/plans/';
+  static const String mySubscription = '/subscriptions/my-subscription/';
 }

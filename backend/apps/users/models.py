@@ -74,7 +74,18 @@ class UserProfile(models.Model):
     """Extended ecosystem profile data for user."""
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    display_name = models.CharField(max_length=100, blank=True, default='')
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    bio = models.TextField(blank=True, default='')
+    country = models.CharField(max_length=100, default='Global')
+    city = models.CharField(max_length=100, blank=True, default='')
+    language = models.CharField(max_length=10, default='en')
+    currency = models.CharField(max_length=10, default='USD')
+    timezone = models.CharField(max_length=50, default='UTC')
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=20, default='Unspecified')
+
+    # Progression & Status
     level = models.PositiveIntegerField(default=1)
     xp = models.PositiveIntegerField(default=0)
     xp_next_level = models.PositiveIntegerField(default=1000)
@@ -95,14 +106,74 @@ class UserProfile(models.Model):
         verbose_name_plural = 'User Profiles'
 
     def __str__(self):
-        return f"Profile: {self.user.username} (LVL {self.level})"
+        return f"Profile: {self.display_name or self.user.username} (LVL {self.level})"
+
+
+class UserPreference(models.Model):
+    """User customization and application preferences."""
+
+    THEME_CHOICES = (
+        ('dark', 'Dark'),
+        ('light', 'Light'),
+        ('system', 'System'),
+    )
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences')
+    theme = models.CharField(max_length=10, choices=THEME_CHOICES, default='dark')
+    language = models.CharField(max_length=10, default='en')
+    notification_enabled = models.BooleanField(default=True)
+    email_notifications = models.BooleanField(default=True)
+    push_notifications = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'vewra_user_preferences'
+        verbose_name = 'User Preference'
+        verbose_name_plural = 'User Preferences'
+
+    def __str__(self):
+        return f"Preferences: {self.user.username}"
+
+
+class UserStatistics(models.Model):
+    """Aggregated user activities and platform metrics."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='statistics')
+    tasks_completed = models.PositiveIntegerField(default=0)
+    videos_watched = models.PositiveIntegerField(default=0)
+    quizzes_completed = models.PositiveIntegerField(default=0)
+    comments_created = models.PositiveIntegerField(default=0)
+    referrals = models.PositiveIntegerField(default=0)
+    total_rewards = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'vewra_user_statistics'
+        verbose_name = 'User Statistics'
+        verbose_name_plural = 'User Statistics'
+
+    def __str__(self):
+        return f"Statistics: {self.user.username}"
 
 
 @receiver(post_save, sender=User)
-def create_or_update_user_profile(sender, instance, created, **kwargs):
-    """Automatically create UserProfile upon user creation."""
+def create_or_update_user_ecosystem_entities(sender, instance, created, **kwargs):
+    """Automatically create UserProfile, UserPreference, and UserStatistics upon user creation."""
     if created:
-        UserProfile.objects.create(user=instance)
+        UserProfile.objects.get_or_create(
+            user=instance,
+            defaults={'display_name': instance.username, 'country': instance.country, 'currency': instance.currency}
+        )
+        UserPreference.objects.get_or_create(user=instance)
+        UserStatistics.objects.get_or_create(user=instance)
     else:
         if hasattr(instance, 'profile'):
             instance.profile.save()
+        if hasattr(instance, 'preferences'):
+            instance.preferences.save()
+        if hasattr(instance, 'statistics'):
+            instance.statistics.save()

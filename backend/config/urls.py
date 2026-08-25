@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/v1/authentication/', include('apps.authentication.urls')),
     path('api/v1/users/', include('apps.users.urls')),
     path('api/v1/security/', include('apps.security.urls')),
+    path('api/v1/subscriptions/', include('apps.subscriptions.urls')),
 ]
 
 if settings.DEBUG:

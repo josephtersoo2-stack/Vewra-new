@@ -6,11 +6,18 @@ class VerificationLevel(models.TextChoices):
     VERIFIED = 'VERIFIED', 'Verified User'
     TRUSTED = 'TRUSTED', 'Trusted User'
 
-class DocumentStatus(models.TextChoices):
-    BASIC = 'BASIC', 'Basic'
+class VerificationStatus(models.TextChoices):
+    NOT_STARTED = 'NOT_STARTED', 'Not Started'
     PENDING = 'PENDING', 'Pending Review'
-    VERIFIED = 'VERIFIED', 'Verified'
+    APPROVED = 'APPROVED', 'Approved'
     REJECTED = 'REJECTED', 'Rejected'
+
+class DocumentType(models.TextChoices):
+    NATIONAL_ID = 'NATIONAL_ID', 'National ID Card'
+    PASSPORT = 'PASSPORT', 'International Passport'
+    DRIVERS_LICENSE = 'DRIVERS_LICENSE', "Driver's License"
+    UTILITY_BILL = 'UTILITY_BILL', 'Utility Bill'
+    OTHER = 'OTHER', 'Other Official ID'
 
 class Verification(models.Model):
     """User identity and KYC verification record."""
@@ -20,18 +27,34 @@ class Verification(models.Model):
         on_delete=models.CASCADE,
         related_name='verifications'
     )
+    country = models.CharField(max_length=100, default='Global')
     verification_level = models.CharField(
         max_length=20,
         choices=VerificationLevel.choices,
         default=VerificationLevel.BASIC
     )
+    status = models.CharField(
+        max_length=20,
+        choices=VerificationStatus.choices,
+        default=VerificationStatus.NOT_STARTED
+    )
+    # Legacy alias support
     document_status = models.CharField(
         max_length=20,
-        choices=DocumentStatus.choices,
-        default=DocumentStatus.BASIC
+        default='BASIC'
     )
+    document_type = models.CharField(
+        max_length=30,
+        choices=DocumentType.choices,
+        default=DocumentType.NATIONAL_ID
+    )
+    document_reference = models.CharField(max_length=100, blank=True, default='')
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
     verified_at = models.DateTimeField(null=True, blank=True)
     reviewed_by = models.CharField(max_length=100, blank=True, null=True)
+    rejection_reason = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -44,7 +67,30 @@ class Verification(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user.username} - {self.verification_level} ({self.document_status})"
+        return f"{self.user.username} - {self.verification_level} ({self.status})"
+
+
+class TrustScoreHistory(models.Model):
+    """Audit ledger tracking trust score changes."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='trust_history'
+    )
+    previous_score = models.PositiveIntegerField()
+    new_score = models.PositiveIntegerField()
+    reason = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'vewra_trust_score_history'
+        verbose_name = 'Trust Score History'
+        verbose_name_plural = 'Trust Score Histories'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username}: {self.previous_score} -> {self.new_score} ({self.reason})"
 
 
 class DeviceSecurity(models.Model):
