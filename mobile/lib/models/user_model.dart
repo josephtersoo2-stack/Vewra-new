@@ -1,4 +1,4 @@
-/// Local User Model representing the profile and state of the current VEWRA user.
+/// User Model representing the profile and state of a VEWRA user.
 class UserModel {
   final String id;
   final String username;
@@ -37,6 +37,71 @@ class UserModel {
     this.verificationStatus = 'Verified',
     this.subscriptionTier = 'Premium',
   });
+
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    final profile = json['profile'] as Map<String, dynamic>? ?? {};
+
+    return UserModel(
+      id: json['id']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      avatarUrl: profile['avatar']?.toString() ?? json['avatarUrl']?.toString(),
+      membershipTier: json['membershipTier']?.toString() ??
+          (profile['subscription_tier']?.toString() ?? 'Gold Explorer'),
+      totalCoins: (profile['total_coins'] as num?)?.toInt() ??
+          (json['totalCoins'] as num?)?.toInt() ??
+          0,
+      fiatBalance: double.tryParse(profile['fiat_balance']?.toString() ?? '') ??
+          (json['fiatBalance'] as num?)?.toDouble() ??
+          0.0,
+      tasksCompleted: (profile['tasks_completed'] as num?)?.toInt() ??
+          (json['tasksCompleted'] as num?)?.toInt() ??
+          0,
+      totalMinutesWatched: (json['totalMinutesWatched'] as num?)?.toInt() ?? 0,
+      streakDays: (profile['streak_days'] as num?)?.toInt() ??
+          (json['streakDays'] as num?)?.toInt() ??
+          1,
+      level: (profile['level'] as num?)?.toInt() ??
+          (json['level'] as num?)?.toInt() ??
+          1,
+      xp: (profile['xp'] as num?)?.toInt() ??
+          (json['xp'] as num?)?.toInt() ??
+          0,
+      xpNextLevel: (profile['xp_next_level'] as num?)?.toInt() ??
+          (json['xpNextLevel'] as num?)?.toInt() ??
+          1000,
+      trustScore: (profile['trust_score'] as num?)?.toInt() ??
+          (json['trustScore'] as num?)?.toInt() ??
+          75,
+      verificationStatus: profile['verification_status']?.toString() ??
+          json['verificationStatus']?.toString() ??
+          'Basic',
+      subscriptionTier: profile['subscription_tier']?.toString() ??
+          json['subscriptionTier']?.toString() ??
+          'Free',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'username': username,
+      'email': email,
+      'avatarUrl': avatarUrl,
+      'membershipTier': membershipTier,
+      'totalCoins': totalCoins,
+      'fiatBalance': fiatBalance,
+      'tasksCompleted': tasksCompleted,
+      'totalMinutesWatched': totalMinutesWatched,
+      'streakDays': streakDays,
+      'level': level,
+      'xp': xp,
+      'xpNextLevel': xpNextLevel,
+      'trustScore': trustScore,
+      'verificationStatus': verificationStatus,
+      'subscriptionTier': subscriptionTier,
+    };
+  }
 
   UserModel copyWith({
     String? id,

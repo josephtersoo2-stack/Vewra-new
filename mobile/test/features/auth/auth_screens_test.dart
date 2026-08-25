@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vewra_mobile/core/constants/app_strings.dart';
 import 'package:vewra_mobile/features/auth/screens/welcome_screen.dart';
 import 'package:vewra_mobile/features/auth/screens/login_screen.dart';
@@ -10,8 +11,10 @@ void main() {
   group('Auth Screens Tests', () {
     testWidgets('WelcomeScreen renders value propositions and action buttons', (WidgetTester tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: WelcomeScreen(),
+        const ProviderScope(
+          child: MaterialApp(
+            home: WelcomeScreen(),
+          ),
         ),
       );
 
@@ -22,8 +25,10 @@ void main() {
 
     testWidgets('LoginScreen renders inputs and validates empty submission', (WidgetTester tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: LoginScreen(),
+        const ProviderScope(
+          child: MaterialApp(
+            home: LoginScreen(),
+          ),
         ),
       );
 
@@ -41,8 +46,10 @@ void main() {
 
     testWidgets('RegisterScreen renders form fields and validates mismatching passwords', (WidgetTester tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: RegisterScreen(),
+        const ProviderScope(
+          child: MaterialApp(
+            home: RegisterScreen(),
+          ),
         ),
       );
 
@@ -65,8 +72,10 @@ void main() {
 
     testWidgets('ForgotPasswordScreen allows entering email and displays recovery message', (WidgetTester tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: ForgotPasswordScreen(),
+        const ProviderScope(
+          child: MaterialApp(
+            home: ForgotPasswordScreen(),
+          ),
         ),
       );
 

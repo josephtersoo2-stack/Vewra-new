@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/constants/app_constants.dart';
@@ -9,16 +10,17 @@ import '../../../core/widgets/buttons/app_button.dart';
 import '../../../core/widgets/inputs/app_text_field.dart';
 import '../../../core/widgets/layout/app_scaffold.dart';
 import '../widgets/auth_header.dart';
+import '../providers/auth_provider.dart';
 
-/// User login screen.
-class LoginScreen extends StatefulWidget {
+/// User login screen integrated with Riverpod authentication provider.
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController(text: 'alex.dev@vewra.io');
   final _passwordController = TextEditingController(text: 'password123');
@@ -31,20 +33,37 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
-      // Simulate rapid local transition for UI/UX testing
-      Future.delayed(const Duration(milliseconds: 600), () {
-        if (mounted) {
-          setState(() => _isLoading = false);
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            AppRoutes.mainShell,
-            (route) => false,
-          );
-        }
-      });
+
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      final success = await ref.read(authProvider.notifier).login(
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (success) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.mainShell,
+          (route) => false,
+        );
+      } else {
+        final authState = ref.read(authProvider);
+        final errorMessage = authState.errorMessage ?? 'Login failed. Please check your credentials.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.error,
+            content: Text(errorMessage),
+          ),
+        );
+      }
     }
   }
 

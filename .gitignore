@@ -29,7 +29,7 @@ Thumbs.db
 *.aab
 
 # Python / Django
-__pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -37,8 +37,11 @@ __pycache__/
 env/
 venv/
 ENV/
-*.env
-.env.local
+backend/venv/
+backend/.env
+backend/db.sqlite3
+backend/staticfiles/
+backend/media/
 *.sqlite3
 
 # Logs & Cache
