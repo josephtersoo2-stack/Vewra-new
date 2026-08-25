@@ -2,6 +2,7 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
 from apps.users.models import User
+from apps.authentication.services import AuthService
 
 class AuthenticationTests(APITestCase):
     def setUp(self):
@@ -9,6 +10,8 @@ class AuthenticationTests(APITestCase):
         self.login_url = reverse('auth-login')
         self.logout_url = reverse('auth-logout')
         self.refresh_url = reverse('auth-refresh')
+        self.reset_request_url = reverse('auth-password-reset-request')
+        self.reset_confirm_url = reverse('auth-password-reset-confirm')
 
         self.user_data = {
             'email': 'testuser@vewra.io',
@@ -91,3 +94,29 @@ class AuthenticationTests(APITestCase):
         # Re-using blacklisted refresh token should fail
         refresh_resp = self.client.post(self.refresh_url, {'refresh': refresh_token})
         self.assertEqual(refresh_resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_password_reset_request_and_confirm(self):
+        user = User.objects.create_user(**self.user_data)
+        req_resp = self.client.post(self.reset_request_url, {'email': user.email})
+        self.assertEqual(req_resp.status_code, status.HTTP_200_OK)
+
+        reset_token = AuthService.generate_password_reset_token(user)
+        confirm_resp = self.client.post(self.reset_confirm_url, {
+            'email': user.email,
+            'token': reset_token,
+            'new_password': 'BrandNewPassword123!',
+        })
+        self.assertEqual(confirm_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(confirm_resp.data['status'], 'success')
+
+        # Check new password works
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('BrandNewPassword123!'))
+
+    def test_password_reset_confirm_invalid_email(self):
+        confirm_resp = self.client.post(self.reset_confirm_url, {
+            'email': 'nonexistent@vewra.io',
+            'token': 'some-token',
+            'new_password': 'BrandNewPassword123!',
+        })
+        self.assertEqual(confirm_resp.status_code, status.HTTP_400_BAD_REQUEST)
