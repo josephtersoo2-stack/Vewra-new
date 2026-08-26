@@ -8,6 +8,7 @@ import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/shell/main_shell.dart';
 import '../../features/tasks/screens/task_details_screen.dart';
+import '../../features/tasks/screens/quiz_screen.dart';
 import '../../features/browser/screens/browser_screen.dart';
 import '../../features/marketplace/screens/marketplace_screen.dart';
 import '../../features/community/screens/community_screen.dart';
@@ -70,6 +71,12 @@ class AppRouter {
       case AppRoutes.browser:
         final task = settings.arguments is TaskModel ? settings.arguments as TaskModel : null;
         return _buildRoute(BrowserScreen(task: task), settings);
+
+      case AppRoutes.quiz:
+        final attemptId = settings.arguments is String
+            ? settings.arguments as String
+            : (settings.arguments as Map<String, dynamic>?)?['attemptId']?.toString() ?? '';
+        return _buildRoute(QuizScreen(attemptId: attemptId), settings);
 
       case AppRoutes.marketplace:
         return _buildRoute(const MarketplaceScreen(), settings);

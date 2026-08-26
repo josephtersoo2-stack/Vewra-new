@@ -446,8 +446,8 @@ Mobile:
 - Flutter (Clean Architecture, Feature-based modular structure, Riverpod state management)
 
 Database:
-- Local development: MySQL
-- Production: PostgreSQL (Django ORM only, avoid database-specific implementation)
+- Local development: PostgreSQL 16+
+- Production: PostgreSQL (Django ORM only, raw SQL prohibited)
 
 Core backend modules:
 ```

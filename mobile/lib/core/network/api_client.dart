@@ -15,7 +15,7 @@ class ApiClient {
         _dio = dio ??
             Dio(
               BaseOptions(
-                baseUrl: baseUrl ?? ApiConstants.defaultBaseUrl,
+                baseUrl: baseUrl ?? ApiConstants.baseUrl,
                 connectTimeout: ApiConstants.connectTimeout,
                 receiveTimeout: ApiConstants.receiveTimeout,
                 sendTimeout: ApiConstants.sendTimeout,

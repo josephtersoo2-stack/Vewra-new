@@ -4,12 +4,14 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/formatters.dart';
 
-/// Heads-Up Display (HUD) overlay tracking playback duration and reward progress.
+/// Heads-Up Display (HUD) overlay tracking server-authoritative playback duration and reward progress.
 class TrackingHud extends StatelessWidget {
   final int currentSeconds;
   final int targetSeconds;
   final int rewardCoins;
   final bool isTracking;
+  final bool quizRequired;
+  final double? progressPercentage;
 
   const TrackingHud({
     super.key,
@@ -17,20 +19,28 @@ class TrackingHud extends StatelessWidget {
     required this.targetSeconds,
     required this.rewardCoins,
     this.isTracking = true,
+    this.quizRequired = false,
+    this.progressPercentage,
   });
 
   @override
   Widget build(BuildContext context) {
-    final double progress = (currentSeconds / targetSeconds).clamp(0.0, 1.0);
+    final double progress = progressPercentage != null
+        ? (progressPercentage! / 100.0).clamp(0.0, 1.0)
+        : (targetSeconds > 0
+            ? (currentSeconds / targetSeconds).clamp(0.0, 1.0)
+            : 0.0);
+
+    final bool isCompleted = currentSeconds >= targetSeconds;
 
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppConstants.space16,
         vertical: AppConstants.space12,
       ),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
-        border: const Border(
+        border: Border(
           bottom: BorderSide(color: AppColors.border),
         ),
       ),
@@ -46,14 +56,26 @@ class TrackingHud extends StatelessWidget {
                     height: 8,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isTracking ? AppColors.successLight : AppColors.warning,
+                      color: isCompleted
+                          ? AppColors.success
+                          : (isTracking
+                              ? AppColors.successLight
+                              : AppColors.warning),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    isTracking ? 'Tracking Active' : 'Tracking Paused',
+                    isCompleted
+                        ? (quizRequired
+                            ? 'Watch Completed (Quiz Next)'
+                            : 'Watch Completed')
+                        : (isTracking ? 'Server Tracking Active' : 'Tracking Paused'),
                     style: AppTypography.labelSmall.copyWith(
-                      color: isTracking ? AppColors.successLight : AppColors.warning,
+                      color: isCompleted
+                          ? AppColors.success
+                          : (isTracking
+                              ? AppColors.successLight
+                              : AppColors.warning),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -61,7 +83,8 @@ class TrackingHud extends StatelessWidget {
               ),
               Row(
                 children: [
-                  const Icon(Icons.monetization_on_rounded, color: AppColors.coinGold, size: 14),
+                  const Icon(Icons.monetization_on_rounded,
+                      color: AppColors.coinGold, size: 14),
                   const SizedBox(width: 4),
                   Text(
                     '+$rewardCoins Coins',
@@ -76,12 +99,14 @@ class TrackingHud extends StatelessWidget {
           ),
           const SizedBox(height: AppConstants.space8),
           ClipRRect(
-            borderRadius: AppConstants.borderRadiusFull,
+            borderRadius: BorderRadius.circular(AppConstants.radiusFull),
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 6,
               backgroundColor: AppColors.surfaceLight,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryLight),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                isCompleted ? AppColors.success : AppColors.primaryLight,
+              ),
             ),
           ),
           const SizedBox(height: AppConstants.space6),
@@ -90,12 +115,13 @@ class TrackingHud extends StatelessWidget {
             children: [
               Text(
                 '${Formatters.formatTimer(currentSeconds)} / ${Formatters.formatTimer(targetSeconds)}',
-                style: AppTypography.labelSmall.copyWith(color: AppColors.textSecondary),
+                style: AppTypography.labelSmall
+                    .copyWith(color: AppColors.textSecondary),
               ),
               Text(
                 '${(progress * 100).toInt()}%',
                 style: AppTypography.labelSmall.copyWith(
-                  color: AppColors.primaryLight,
+                  color: isCompleted ? AppColors.success : AppColors.primaryLight,
                   fontWeight: FontWeight.w700,
                 ),
               ),

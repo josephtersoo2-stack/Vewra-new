@@ -1,18 +1,19 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../../core/constants/app_strings.dart';
+import '../../../core/routing/app_routes.dart';
 import '../../../models/task_model.dart';
-import '../../../services/dummy_data_service.dart';
 import '../../../core/widgets/buttons/app_button.dart';
 import '../../../core/widgets/layout/app_scaffold.dart';
 import '../widgets/browser_top_bar.dart';
 import '../widgets/tracking_hud.dart';
+import '../widgets/task_completion_dialog.dart';
+import '../providers/tracking_session_provider.dart';
 
-/// Browser Screen with top HUD, WebView container placeholder, and verification control.
-class BrowserScreen extends StatefulWidget {
+/// In-App Player & Browser screen driven by server-authoritative watch session tracking.
+class BrowserScreen extends ConsumerStatefulWidget {
   final TaskModel? task;
 
   const BrowserScreen({
@@ -21,174 +22,237 @@ class BrowserScreen extends StatefulWidget {
   });
 
   @override
-  State<BrowserScreen> createState() => _BrowserScreenState();
+  ConsumerState<BrowserScreen> createState() => _BrowserScreenState();
 }
 
-class _BrowserScreenState extends State<BrowserScreen> {
+class _BrowserScreenState extends ConsumerState<BrowserScreen>
+    with WidgetsBindingObserver {
   late TaskModel _task;
-  int _currentSeconds = 35;
-  late int _targetSeconds;
-  bool _isTracking = true;
-  Timer? _timer;
+  bool _isVerifying = false;
 
   @override
   void initState() {
     super.initState();
-    _task = widget.task ?? DummyDataService.tasks.first;
-    _targetSeconds = _task.durationMinutes * 60;
-
-    // Simulate progress ticker for UI inspection
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_isTracking && _currentSeconds < _targetSeconds) {
-        setState(() {
-          _currentSeconds++;
-        });
-      }
-    });
+    WidgetsBinding.instance.addObserver(this);
+    _task = widget.task ??
+        const TaskModel(
+          id: 'placeholder',
+          title: 'Video Task Session',
+          rewardCoins: 20,
+        );
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  void _toggleTracking() {
-    setState(() {
-      _isTracking = !_isTracking;
-    });
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    final notifier = ref.read(trackingSessionProvider.notifier);
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      notifier.onAppBackground();
+    } else if (state == AppLifecycleState.resumed) {
+      notifier.onAppForeground();
+    }
   }
 
-  void _handleComplete() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceElevated,
-        shape: const RoundedRectangleBorder(
-          borderRadius: AppConstants.borderRadiusLg,
-          side: BorderSide(color: AppColors.border),
+  void _togglePlayback() {
+    final state = ref.read(trackingSessionProvider);
+    final notifier = ref.read(trackingSessionProvider.notifier);
+    if (state.isActive) {
+      notifier.pause();
+    } else {
+      notifier.play();
+    }
+  }
+
+  Future<void> _handleComplete() async {
+    setState(() => _isVerifying = true);
+    final notifier = ref.read(trackingSessionProvider.notifier);
+    final result = await notifier.verifyCompletion();
+    setState(() => _isVerifying = false);
+
+    if (!mounted || result == null) return;
+
+    if (result.isCompleted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => TaskCompletionDialog(
+          result: result,
+          onDismiss: () {
+            Navigator.pop(ctx);
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              AppRoutes.tasks,
+              (route) => false,
+            );
+          },
         ),
-        title: Row(
-          children: [
-            const Icon(Icons.stars_rounded, color: AppColors.coinGold, size: 28),
-            const SizedBox(width: 10),
-            Text('Task Verified!', style: AppTypography.headlineSmall),
+      );
+    } else if (result.isAwaitingQuiz) {
+      final attemptId = result.attemptId ??
+          ref.read(trackingSessionProvider).session?.attemptId ??
+          '';
+      Navigator.pushNamed(
+        context,
+        AppRoutes.quiz,
+        arguments: attemptId,
+      );
+    } else if (result.isIncomplete) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+    }
+  }
+
+  void _handleExit() {
+    final trackingState = ref.read(trackingSessionProvider);
+    if (trackingState.isActive || trackingState.isPaused) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surfaceElevated,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+            side: const BorderSide(color: AppColors.border),
+          ),
+          title: const Text('Leave Session?'),
+          content: const Text(
+            'Exiting now will pause or abandon your current watch progress.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Continue Watching'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                ref.read(trackingSessionProvider.notifier).abandonSession();
+                Navigator.pop(ctx);
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Exit Task'),
+            ),
           ],
         ),
-        content: Text(
-          'Congratulations! You earned ${_task.rewardCoins} Coins. Your balance has been updated.',
-          style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx); // Close dialog
-              Navigator.pop(context); // Exit browser
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Back to Tasks'),
-          ),
-        ],
-      ),
-    );
+      );
+    } else {
+      Navigator.pop(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final trackingState = ref.watch(trackingSessionProvider);
+    final creditedSeconds = trackingState.creditedWatchSeconds;
+    final targetSeconds = trackingState.requiredSeconds > 0
+        ? trackingState.requiredSeconds
+        : (_task.requiredWatchSeconds > 0 ? _task.requiredWatchSeconds : 60);
+
+    final isSatisfied = trackingState.isWatchSatisfied ||
+        creditedSeconds >= targetSeconds;
+
     return AppScaffold(
       body: Column(
         children: [
-          // Browser Address Bar
+          // Browser Top Bar
           BrowserTopBar(
-            url: _task.youtubeUrl,
-            onClose: () => Navigator.pop(context),
-            onReload: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Reloading session viewer...')),
-              );
-            },
+            url: _task.sourceUrl.isNotEmpty
+                ? _task.sourceUrl
+                : 'https://m.youtube.com/watch?v=task',
+            onClose: _handleExit,
           ),
-          // Tracking Heads-Up Display
+          // Server-Authoritative Tracking HUD
           TrackingHud(
-            currentSeconds: _currentSeconds,
-            targetSeconds: _targetSeconds,
+            currentSeconds: creditedSeconds,
+            targetSeconds: targetSeconds,
             rewardCoins: _task.rewardCoins,
-            isTracking: _isTracking,
+            isTracking: trackingState.isActive,
+            quizRequired: _task.quizRequired,
+            progressPercentage: trackingState.progressPercentage,
           ),
-          // WebView Container Placeholder
+          // Player Container
           Expanded(
             child: Container(
               color: Colors.black,
               child: Stack(
                 children: [
-                  // Simulated Video Player Frame
                   Center(
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 100,
-                          height: 70,
+                          width: 80,
+                          height: 80,
                           decoration: BoxDecoration(
                             color: AppColors.youtubeRed.withValues(alpha: 0.9),
-                            borderRadius: AppConstants.borderRadiusMd,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.youtubeRed.withValues(alpha: 0.4),
-                                blurRadius: 20,
-                              ),
-                            ],
+                            shape: BoxShape.circle,
                           ),
-                          child: const Icon(
-                            Icons.play_arrow_rounded,
+                          child: Icon(
+                            trackingState.isActive
+                                ? Icons.play_arrow_rounded
+                                : Icons.pause_rounded,
+                            size: 54,
                             color: Colors.white,
-                            size: 48,
                           ),
                         ),
-                        const SizedBox(height: AppConstants.space20),
+                        const SizedBox(height: AppConstants.space16),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: AppConstants.space32),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AppConstants.space24),
                           child: Text(
                             _task.title,
                             textAlign: TextAlign.center,
                             style: AppTypography.titleMedium.copyWith(
                               color: Colors.white,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppConstants.space8),
+                        const SizedBox(height: 6),
                         Text(
-                          _task.channelName,
-                          style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(height: AppConstants.space24),
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: AppConstants.space32),
-                          padding: const EdgeInsets.all(AppConstants.space12),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface.withValues(alpha: 0.8),
-                            borderRadius: AppConstants.borderRadiusSm,
-                            border: Border.all(color: AppColors.border),
+                          _task.channelName.isNotEmpty
+                              ? _task.channelName
+                              : 'VEWRA Verified Content',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Colors.white70,
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.secondary),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'WebView Integration Slot (Phase 5 Engine)',
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ),
-                            ],
+                        ),
+                        const SizedBox(height: AppConstants.space20),
+                        // Play / Pause Toggle Button
+                        OutlinedButton.icon(
+                          onPressed: _togglePlayback,
+                          icon: Icon(
+                            trackingState.isActive
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            color: Colors.white,
+                          ),
+                          label: Text(
+                            trackingState.isActive
+                                ? 'Pause Playback'
+                                : 'Resume Playback',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.white38),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                  AppConstants.radiusFull),
+                            ),
                           ),
                         ),
                       ],
@@ -198,35 +262,37 @@ class _BrowserScreenState extends State<BrowserScreen> {
               ),
             ),
           ),
-          // Bottom Control Footer
+          // Bottom Verification Action Bar
           Container(
             padding: const EdgeInsets.all(AppConstants.space16),
             decoration: const BoxDecoration(
               color: AppColors.surface,
-              border: Border(top: BorderSide(color: AppColors.border)),
+              border: Border(
+                top: BorderSide(color: AppColors.border),
+              ),
             ),
             child: Row(
               children: [
                 Expanded(
-                  flex: 1,
                   child: AppButton(
-                    text: _isTracking ? AppStrings.pauseTracking : AppStrings.resumeTracking,
-                    onPressed: _toggleTracking,
-                    variant: AppButtonVariant.secondary,
-                    prefixIcon: Icon(
-                      _isTracking ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      size: 18,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppConstants.space12),
-                Expanded(
-                  flex: 2,
-                  child: AppButton(
-                    key: const Key('complete_verification_button'),
-                    text: AppStrings.completeVerification,
-                    onPressed: _handleComplete,
-                    variant: AppButtonVariant.primary,
+                    key: const Key('verify_task_button'),
+                    text: isSatisfied
+                        ? (_task.quizRequired
+                            ? 'Proceed to Quiz'
+                            : 'Verify & Claim Reward')
+                        : 'Watching in Progress ($creditedSeconds/${targetSeconds}s)',
+                    isLoading: _isVerifying,
+                    prefixIcon: isSatisfied
+                        ? (_task.quizRequired
+                            ? const Icon(Icons.quiz_outlined,
+                                color: Colors.white, size: 20)
+                            : const Icon(Icons.verified_rounded,
+                                color: Colors.white, size: 20))
+                        : const Icon(Icons.timer_outlined,
+                            color: Colors.white, size: 20),
+                    onPressed: isSatisfied && !_isVerifying
+                        ? _handleComplete
+                        : null,
                   ),
                 ),
               ],

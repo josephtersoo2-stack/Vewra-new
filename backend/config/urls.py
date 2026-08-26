@@ -11,6 +11,8 @@ urlpatterns = [
     path('api/v1/security/', include('apps.security.urls')),
     path('api/v1/subscriptions/', include('apps.subscriptions.urls')),
     path('api/v1/wallet/', include('apps.wallet.urls')),
+    path('api/v1/tasks/', include('apps.tasks.urls')),
+    path('api/v1/tracking/', include('apps.tracking.urls')),
 ]
 
 if settings.DEBUG:

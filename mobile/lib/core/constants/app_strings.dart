@@ -59,6 +59,7 @@ class AppStrings {
   static const String startTask = 'Start Task';
   static const String taskDetails = 'Task Details';
   static const String taskInstructions = 'Instructions';
+  static const String verificationRules = 'Verification Rules & Steps';
   static const String searchInstructions = 'Search Keywords';
   static const String rewardInfo = 'Reward Payout';
   static const String duration = 'Duration';

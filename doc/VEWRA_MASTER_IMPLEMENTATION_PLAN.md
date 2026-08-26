@@ -406,16 +406,8 @@ Mobile:
 Flutter
 
 Database:
-
-Local development:
-MySQL
-
-Production:
-PostgreSQL
-
-Use Django ORM only.
-
-Avoid database-specific implementation.
+- Local development: PostgreSQL 16+
+- Production: PostgreSQL (Django ORM only, raw SQL prohibited).
 
 Core backend modules:
 

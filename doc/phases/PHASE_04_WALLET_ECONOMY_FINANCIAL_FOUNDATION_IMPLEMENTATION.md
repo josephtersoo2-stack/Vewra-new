@@ -42,9 +42,7 @@ Technology:
 -   Django ORM
 
 Database:
-
-Local: - MySQL
-
+Local: - PostgreSQL 16+
 Production: - PostgreSQL
 
 Do not use raw SQL.

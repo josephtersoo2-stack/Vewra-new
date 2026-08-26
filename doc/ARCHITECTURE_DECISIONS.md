@@ -138,6 +138,23 @@ Use **Flutter Dotenv (`flutter_dotenv: ^5.2.1`)** for managing environment-speci
 
 ---
 
+## 7. Database Architecture: PostgreSQL 16+ & Django ORM
+
+### Decision
+Use **PostgreSQL 16+** as the standard database for both local development and production environments, accessed exclusively through **Django ORM**.
+
+### Why It Was Selected
+- **Production Parity**: Eliminates dialect and concurrency divergence between local development and production deployments.
+- **ACID Transactions & Row-Level Locking**: Native support for `select_for_update()` and `@transaction.atomic` for high-concurrency wallet ledger updates and heartbeat processing.
+- **Robust JSONB & UUID Support**: First-class indexing and querying for task instructions, quiz options, and event logs.
+- **Django ORM Standard**: All database interactions use Django ORM models, migrations, and querysets. Raw SQL is strictly prohibited unless explicitly approved in a future ADR.
+
+### Where It Will Be Used
+- All backend data models (`backend/apps/`).
+- Local development (`vewra` database on port 5432) and production PostgreSQL instances.
+
+---
+
 ## Summary Matrix
 
 | Tool / Package | Category | Primary Purpose | Primary Dependent Phases |
@@ -148,3 +165,5 @@ Use **Flutter Dotenv (`flutter_dotenv: ^5.2.1`)** for managing environment-speci
 | **`flutter_secure_storage`** | Secure Storage | Hardware-encrypted JWT token persistence | Phase 2, 5 |
 | **`shared_preferences`** | Key-Value Store | App settings, theme flags, onboarding states | Phase 1, 3 |
 | **`flutter_dotenv`** | Configuration | Environment-based URL & API key management | Phases 2–17 |
+| **PostgreSQL 16+** | Database Engine | Relational data persistence via Django ORM | All Backend Phases (2–17) |
+

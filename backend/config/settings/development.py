@@ -1,38 +1,83 @@
 import sys
+import os
 from .base import *
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["*"]
 
-# Database configuration for development - Default to MySQL
-DB_ENGINE = os.getenv('DB_ENGINE', 'django.db.backends.mysql')
-DB_NAME = os.getenv('DB_NAME', 'vewra')
-DB_USER = os.getenv('DB_USER', 'root')
-DB_PASSWORD = os.getenv('DB_PASSWORD', '')
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_PORT = os.getenv('DB_PORT', '3306')
 
-if 'test' in sys.argv:
-    # Dedicated in-memory test database for test runner isolation
+# PostgreSQL Development Database Configuration
+# Local PostgreSQL 16 installation
+# Database: vewra
+# Host: localhost
+# Port: 5432
+
+DB_ENGINE = os.getenv(
+    "DB_ENGINE",
+    "django.db.backends.postgresql"
+)
+
+DB_NAME = os.getenv(
+    "DB_NAME",
+    "vewra"
+)
+
+DB_USER = os.getenv(
+    "DB_USER",
+    "postgres"
+)
+
+DB_PASSWORD = os.getenv(
+    "DB_PASSWORD",
+    ""
+)
+
+DB_HOST = os.getenv(
+    "DB_HOST",
+    "localhost"
+)
+
+DB_PORT = os.getenv(
+    "DB_PORT",
+    "5432"
+)
+
+
+# Test database isolation
+if "test" in sys.argv:
+
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': ':memory:',
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:",
         }
     }
+
 else:
+
     DATABASES = {
-        'default': {
-            'ENGINE': DB_ENGINE,
-            'NAME': DB_NAME,
-            'USER': DB_USER,
-            'PASSWORD': DB_PASSWORD,
-            'HOST': DB_HOST,
-            'PORT': DB_PORT,
-            'OPTIONS': {
-                'charset': 'utf8mb4',
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            } if 'mysql' in DB_ENGINE else {},
+        "default": {
+            "ENGINE": DB_ENGINE,
+            "NAME": DB_NAME,
+            "USER": DB_USER,
+            "PASSWORD": DB_PASSWORD,
+            "HOST": DB_HOST,
+            "PORT": DB_PORT,
+
+            "OPTIONS": {},
         }
     }
+
+
+# Development CORS settings for mobile testing
+CORS_ALLOW_ALL_ORIGINS = True
+
+
+# Allow Flutter physical device connection
+CSRF_TRUSTED_ORIGINS = [
+    "http://10.38.20.241:8000",
+    "http://192.168.1.45:8000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]

@@ -1,10 +1,24 @@
-/// Centralized API endpoint constants and configuration.
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+/// Centralized API endpoint constants and environment-based configuration.
 class ApiConstants {
   ApiConstants._();
 
-  // Base URL: In local development, Android emulator uses 10.0.2.2, iOS/Web/Desktop uses 127.0.0.1
-  static const String defaultBaseUrl = 'http://10.0.2.2:8000/api/v1';
-  static const String localhostBaseUrl = 'http://127.0.0.1:8000/api/v1';
+  /// Resolves the base API URL dynamically from environment configuration (.env),
+  /// with a robust localhost fallback.
+  static String get baseUrl {
+    try {
+      final value = dotenv.env['API_BASE_URL']?.trim();
+      if (value != null && value.isNotEmpty) {
+        return value.endsWith('/')
+            ? value.substring(0, value.length - 1)
+            : value;
+      }
+    } catch (_) {
+      // Graceful fallback when dotenv is not initialized (e.g., test runners)
+    }
+    return 'http://127.0.0.1:8000/api/v1';
+  }
 
   // Network Timeouts
   static const Duration connectTimeout = Duration(seconds: 15);
@@ -44,4 +58,22 @@ class ApiConstants {
   static const String walletCoinsTransfer = '/wallet/coins/transfer/';
   static const String walletWithdrawals = '/wallet/withdrawals/';
   static const String walletWithdrawalsCreate = '/wallet/withdrawals/create/';
+
+  // Phase 5: Task Catalog & Attempts Endpoints
+  static const String tasks = '/tasks/';
+  static String taskDetails(String id) => '/tasks/$id/';
+  static String taskEligibility(String id) => '/tasks/$id/eligibility/';
+  static String taskStart(String id) => '/tasks/$id/start/';
+
+  static const String taskAttempts = '/tasks/attempts/';
+  static String taskAttempt(String id) => '/tasks/attempts/$id/';
+  static String taskQuiz(String id) => '/tasks/attempts/$id/quiz/';
+  static String taskQuizSubmit(String id) => '/tasks/attempts/$id/quiz/submit/';
+
+  // Phase 5: Video Tracking & Heartbeat Endpoints
+  static String trackingSession(String id) => '/tracking/sessions/$id/';
+  static String trackingHeartbeat(String id) => '/tracking/sessions/$id/heartbeat/';
+  static String trackingEvents(String id) => '/tracking/sessions/$id/events/';
+  static String trackingComplete(String id) => '/tracking/sessions/$id/complete/';
+  static String trackingAbandon(String id) => '/tracking/sessions/$id/abandon/';
 }

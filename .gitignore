@@ -37,8 +37,13 @@ Thumbs.db
 env/
 venv/
 ENV/
+# Environment Variables & Secrets
+.env
+*.env
 backend/venv/
 backend/.env
+mobile/.env
+mobile/.env.local
 backend/db.sqlite3
 backend/staticfiles/
 backend/media/

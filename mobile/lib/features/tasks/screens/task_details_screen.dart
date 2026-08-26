@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/constants/app_constants.dart';
@@ -7,14 +8,17 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../models/task_model.dart';
-import '../../../services/dummy_data_service.dart';
 import '../../../core/widgets/buttons/app_button.dart';
 import '../../../core/widgets/buttons/app_icon_button.dart';
 import '../../../core/widgets/cards/app_card.dart';
 import '../../../core/widgets/layout/app_scaffold.dart';
+import '../providers/task_feed_provider.dart';
+import '../providers/task_details_provider.dart';
+import '../../browser/models/watch_session_model.dart';
+import '../../browser/providers/tracking_session_provider.dart';
 
-/// Detailed Task View outlining verification requirements, search keywords, and reward structure.
-class TaskDetailsScreen extends StatelessWidget {
+/// Detailed Task View with server eligibility verification, instructions, and authenticated session initiation.
+class TaskDetailsScreen extends ConsumerStatefulWidget {
   final TaskModel? task;
 
   const TaskDetailsScreen({
@@ -23,8 +27,65 @@ class TaskDetailsScreen extends StatelessWidget {
   });
 
   @override
+  ConsumerState<TaskDetailsScreen> createState() => _TaskDetailsScreenState();
+}
+
+class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
+  bool _isStarting = false;
+
+  Future<void> _handleStartTask(TaskModel task) async {
+    setState(() => _isStarting = true);
+
+    try {
+      final repo = ref.read(taskRepositoryProvider);
+      final result = await repo.startTask(task.id);
+
+      final watchSession = result['watch_session'] as WatchSessionModel?;
+      if (watchSession != null && watchSession.watchToken != null) {
+        ref.read(trackingSessionProvider.notifier).initializeSession(
+              session: watchSession,
+              watchToken: watchSession.watchToken!,
+            );
+      }
+
+      setState(() => _isStarting = false);
+
+      if (mounted) {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.browser,
+          arguments: task,
+        );
+      }
+    } catch (e) {
+      setState(() => _isStarting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final effectiveTask = task ?? DummyDataService.tasks.first;
+    final passedTask = widget.task;
+    final detailsAsync = passedTask != null
+        ? ref.watch(taskDetailsProvider(passedTask.id))
+        : null;
+
+    final effectiveTask = detailsAsync?.task ?? passedTask ??
+        const TaskModel(
+          id: 'placeholder',
+          title: 'Video Task Overview',
+          rewardCoins: 20,
+        );
+
+    final eligibility = detailsAsync?.eligibility;
+    final isLocked = eligibility != null && !eligibility.eligible;
 
     return AppScaffold(
       body: Column(
@@ -78,7 +139,18 @@ class TaskDetailsScreen extends StatelessWidget {
                       border: Border.all(color: AppColors.border),
                     ),
                     child: Stack(
+                      fit: StackFit.expand,
                       children: [
+                        if (effectiveTask.thumbnailUrl.isNotEmpty)
+                          ClipRRect(
+                            borderRadius: AppConstants.borderRadiusLg,
+                            child: Image.network(
+                              effectiveTask.thumbnailUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const SizedBox.shrink(),
+                            ),
+                          ),
                         Center(
                           child: Container(
                             padding: const EdgeInsets.all(16),
@@ -100,44 +172,28 @@ class TaskDetailsScreen extends StatelessWidget {
                             ),
                           ),
                         ),
+                        // Duration Tag
                         Positioned(
-                          top: 12,
-                          left: 12,
+                          bottom: AppConstants.space12,
+                          right: AppConstants.space12,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.overlayDark,
-                              borderRadius: AppConstants.borderRadiusSm,
-                              border: Border.all(color: AppColors.border),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppConstants.space10,
+                              vertical: AppConstants.space4,
                             ),
-                            child: Text(
-                              effectiveTask.category,
-                              style: AppTypography.labelSmall.copyWith(
-                                color: AppColors.primaryLight,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 12,
-                          right: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppColors.overlayDark,
+                              color: Colors.black.withValues(alpha: 0.8),
                               borderRadius: AppConstants.borderRadiusSm,
                             ),
                             child: Row(
-                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.access_time_rounded, size: 14, color: Colors.white),
+                                const Icon(Icons.timer_outlined, size: 14, color: Colors.white),
                                 const SizedBox(width: 4),
                                 Text(
-                                  Formatters.formatDuration(effectiveTask.durationMinutes),
+                                  '${effectiveTask.requiredWatchSeconds}s required',
                                   style: AppTypography.labelSmall.copyWith(
                                     color: Colors.white,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
@@ -169,12 +225,37 @@ class TaskDetailsScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        effectiveTask.channelName,
+                        effectiveTask.channelName.isNotEmpty
+                            ? effectiveTask.channelName
+                            : 'VEWRA Verified Creator',
                         style: AppTypography.titleSmall.copyWith(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      if (effectiveTask.quizRequired) ...[
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(AppConstants.radiusSm),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.quiz_outlined, size: 14, color: AppColors.secondary),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Quiz Required',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.secondary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: AppConstants.space20),
@@ -223,77 +304,145 @@ class TaskDetailsScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppConstants.space20),
-                  // Search Keyword Assistance
-                  AppCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
+
+                  // Eligibility Warning Banner if locked
+                  if (isLocked) ...[
+                    const SizedBox(height: AppConstants.space16),
+                    Container(
+                      padding: const EdgeInsets.all(AppConstants.space14),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.1),
+                        borderRadius: AppConstants.borderRadiusMd,
+                        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.lock_rounded, color: AppColors.error, size: 20),
+                          const SizedBox(width: AppConstants.space10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(Icons.search_rounded, size: 18, color: AppColors.secondary),
-                                const SizedBox(width: 6),
                                 Text(
-                                  AppStrings.searchInstructions,
+                                  'Task Currently Locked',
                                   style: AppTypography.titleSmall.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  eligibility.reasons.join('\n'),
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.textSecondary,
                                   ),
                                 ),
                               ],
                             ),
-                            InkWell(
-                              onTap: () {
-                                Clipboard.setData(ClipboardData(text: effectiveTask.searchKeywords));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Search keywords copied!')),
-                                );
-                              },
-                              borderRadius: AppConstants.borderRadiusSm,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.copy_rounded, size: 14, color: AppColors.primaryLight),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Copy',
-                                      style: AppTypography.labelSmall.copyWith(color: AppColors.primaryLight),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: AppConstants.space20),
+                  // Search Keyword Assistance
+                  if (effectiveTask.searchKeywords.isNotEmpty) ...[
+                    AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.search_rounded, size: 18, color: AppColors.secondary),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    AppStrings.searchInstructions,
+                                    style: AppTypography.titleSmall.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
                                     ),
-                                  ],
+                                  ),
+                                ],
+                              ),
+                              InkWell(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(text: effectiveTask.searchKeywords));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Keyword copied!'),
+                                      duration: Duration(seconds: 1),
+                                    ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.copy_rounded, size: 14, color: AppColors.primaryLight),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Copy',
+                                        style: AppTypography.labelSmall.copyWith(
+                                          color: AppColors.primaryLight,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppConstants.space8),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(AppConstants.space12),
-                          decoration: BoxDecoration(
-                            color: AppColors.backgroundSecondary,
-                            borderRadius: AppConstants.borderRadiusSm,
-                            border: Border.all(color: AppColors.border),
+                            ],
                           ),
-                          child: Text(
-                            effectiveTask.searchKeywords,
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textPrimary,
-                              fontFamily: 'monospace',
+                          const SizedBox(height: AppConstants.space12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceLight,
+                              borderRadius: AppConstants.borderRadiusSm,
+                            ),
+                            child: SelectableText(
+                              effectiveTask.searchKeywords,
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: AppColors.textSecondary,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppConstants.space20),
-                  // Instructions Checklist
+                    const SizedBox(height: AppConstants.space20),
+                  ],
+
+                  // Description
+                  if (effectiveTask.description.isNotEmpty) ...[
+                    Text(
+                      'Overview',
+                      style: AppTypography.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.space8),
+                    Text(
+                      effectiveTask.description,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.space20),
+                  ],
+
+                  // Verification Rules & Steps
                   Text(
-                    AppStrings.howItWorks,
-                    style: AppTypography.titleLarge.copyWith(
+                    AppStrings.verificationRules,
+                    style: AppTypography.headlineSmall.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -335,23 +484,24 @@ class TaskDetailsScreen extends StatelessWidget {
           // Bottom Sticky Action Button
           Container(
             padding: const EdgeInsets.all(AppConstants.space16),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.surface,
-              border: const Border(
+              border: Border(
                 top: BorderSide(color: AppColors.border),
               ),
             ),
             child: AppButton(
               key: const Key('start_watching_button'),
-              text: AppStrings.startWatching,
-              prefixIcon: const Icon(Icons.play_circle_filled_rounded, color: Colors.white, size: 22),
-              onPressed: () {
-                Navigator.pushNamed(
-                  context,
-                  AppRoutes.browser,
-                  arguments: effectiveTask,
-                );
-              },
+              text: isLocked
+                  ? 'Requirements Not Met'
+                  : (_isStarting ? 'Starting Session...' : AppStrings.startWatching),
+              isLoading: _isStarting,
+              prefixIcon: isLocked
+                  ? const Icon(Icons.lock_rounded, color: Colors.white, size: 20)
+                  : const Icon(Icons.play_circle_filled_rounded, color: Colors.white, size: 22),
+              onPressed: isLocked || _isStarting
+                  ? null
+                  : () => _handleStartTask(effectiveTask),
             ),
           ),
         ],

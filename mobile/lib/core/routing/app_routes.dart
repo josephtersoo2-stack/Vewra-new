@@ -20,6 +20,7 @@ class AppRoutes {
   static const String wallet = '/wallet';
   static const String transactionHistory = '/transaction-history';
   static const String withdraw = '/withdraw';
+  static const String quiz = '/quiz';
   static const String profile = '/profile';
   static const String settings = '/settings';
 }
