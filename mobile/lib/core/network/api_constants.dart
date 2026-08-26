@@ -36,4 +36,12 @@ class ApiConstants {
   // Subscriptions Endpoints
   static const String subscriptionPlans = '/subscriptions/plans/';
   static const String mySubscription = '/subscriptions/my-subscription/';
+
+  // Wallet & Economy Endpoints
+  static const String walletBalance = '/wallet/balance/';
+  static const String walletTransactions = '/wallet/transactions/';
+  static const String walletCoinsHistory = '/wallet/coins/history/';
+  static const String walletCoinsTransfer = '/wallet/coins/transfer/';
+  static const String walletWithdrawals = '/wallet/withdrawals/';
+  static const String walletWithdrawalsCreate = '/wallet/withdrawals/create/';
 }

@@ -18,6 +18,8 @@ class AppRoutes {
   static const String community = '/community';
   static const String verification = '/verification';
   static const String wallet = '/wallet';
+  static const String transactionHistory = '/transaction-history';
+  static const String withdraw = '/withdraw';
   static const String profile = '/profile';
   static const String settings = '/settings';
 }

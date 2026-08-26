@@ -30,6 +30,7 @@ class TransactionItem extends StatelessWidget {
         iconBg = AppColors.primary.withValues(alpha: 0.15);
         break;
       case TransactionType.dailyStreak:
+      case TransactionType.bonus:
         icon = Icons.local_fire_department_rounded;
         iconColor = AppColors.warning;
         iconBg = AppColors.warning.withValues(alpha: 0.15);
@@ -40,9 +41,22 @@ class TransactionItem extends StatelessWidget {
         iconBg = AppColors.secondary.withValues(alpha: 0.15);
         break;
       case TransactionType.referralBonus:
+      case TransactionType.sale:
         icon = Icons.group_add_rounded;
         iconColor = AppColors.successLight;
         iconBg = AppColors.success.withValues(alpha: 0.15);
+        break;
+      case TransactionType.transfer:
+        icon = Icons.swap_horiz_rounded;
+        iconColor = AppColors.cyan;
+        iconBg = AppColors.cyan.withValues(alpha: 0.15);
+        break;
+      case TransactionType.purchase:
+      case TransactionType.promotion:
+      case TransactionType.adjustment:
+        icon = Icons.receipt_rounded;
+        iconColor = AppColors.amber;
+        iconBg = AppColors.amber.withValues(alpha: 0.15);
         break;
     }
 

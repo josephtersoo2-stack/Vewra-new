@@ -13,6 +13,8 @@ import '../../features/marketplace/screens/marketplace_screen.dart';
 import '../../features/community/screens/community_screen.dart';
 import '../../features/verification/screens/verification_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/wallet/screens/transaction_history_screen.dart';
+import '../../features/wallet/screens/withdraw_screen.dart';
 import '../widgets/feedback/app_error_state.dart';
 
 /// Centralized Router for VEWRA application.
@@ -51,6 +53,12 @@ class AppRouter {
 
       case AppRoutes.wallet:
         return _buildRoute(const MainShell(initialIndex: 3), settings);
+
+      case AppRoutes.transactionHistory:
+        return _buildRoute(const TransactionHistoryScreen(), settings);
+
+      case AppRoutes.withdraw:
+        return _buildRoute(const WithdrawScreen(), settings);
 
       case AppRoutes.profile:
         return _buildRoute(const MainShell(initialIndex: 4), settings);
