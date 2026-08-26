@@ -36,21 +36,38 @@ class WalletBalanceView(APIView):
 
 
 class WalletTransactionsView(APIView):
-    """API endpoint to retrieve unified or fiat cash transaction history."""
+    """API endpoint to retrieve unified financial history (cash transactions, coin transactions, withdrawals)."""
 
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, *args, **kwargs):
         tx_type = request.query_params.get('type')
-        queryset = CashTransaction.objects.filter(user=request.user)
+        category = request.query_params.get('category')  # 'coin', 'cash', 'withdrawal', or 'all'
+
+        cash_qs = CashTransaction.objects.filter(user=request.user)
+        coin_qs = CoinTransaction.objects.filter(user=request.user)
+        wd_qs = WithdrawalRequest.objects.filter(user=request.user)
+
         if tx_type:
-            queryset = queryset.filter(transaction_type=tx_type.upper())
-        serializer = CashTransactionSerializer(queryset[:50], many=True)
+            cash_qs = cash_qs.filter(transaction_type=tx_type.upper())
+            coin_qs = coin_qs.filter(transaction_type=tx_type.upper())
+
+        cash_serialized = CashTransactionSerializer(cash_qs[:50], many=True).data
+        coin_serialized = CoinTransactionSerializer(coin_qs[:50], many=True).data
+        wd_serialized = WithdrawalRequestSerializer(wd_qs[:20], many=True).data
+
         return Response(
             {
                 'status': 'success',
-                'count': queryset.count(),
-                'transactions': serializer.data,
+                'count': cash_qs.count() + coin_qs.count(),
+                'transactions': cash_serialized,
+                'coin_transactions': coin_serialized,
+                'withdrawals': wd_serialized,
+                'summary': {
+                    'total_cash_txs': cash_qs.count(),
+                    'total_coin_txs': coin_qs.count(),
+                    'total_withdrawals': wd_qs.count(),
+                }
             },
             status=status.HTTP_200_OK
         )
@@ -138,7 +155,7 @@ class WithdrawalListView(APIView):
 
 
 class WithdrawalCreateView(APIView):
-    """API endpoint to initiate a payout withdrawal request."""
+    """API endpoint to initiate a payout withdrawal request in PENDING state."""
 
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -156,7 +173,7 @@ class WithdrawalCreateView(APIView):
                 return Response(
                     {
                         'status': 'success',
-                        'message': 'Withdrawal request created successfully and queued for processing.',
+                        'message': 'Withdrawal request created successfully and queued in pending status for review.',
                         'withdrawal': WithdrawalRequestSerializer(withdrawal).data,
                         'wallet': WalletSerializer(wallet).data,
                     },

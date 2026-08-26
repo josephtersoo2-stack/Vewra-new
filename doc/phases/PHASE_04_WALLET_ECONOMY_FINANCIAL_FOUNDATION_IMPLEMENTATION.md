@@ -307,3 +307,12 @@ Do not build:
 -   Coin marketplace
 -   Promotion payments
 -   Reward calculation engine
+
+------------------------------------------------------------------------
+
+# Audit Corrections (Applied)
+
+1. **Universal Transaction Service**: Added `create_transaction()` in `WalletService` supporting Coin/Cash transactions, reference generation, balance snapshots, and full audit logs.
+2. **Withdrawal Foundation Flow**: Updated `create_withdrawal_request` so funds are NOT deducted immediately upon request creation. Requests are queued in `PENDING` status for review and processed in later phases.
+3. **Security Extension Points**: Added `check_verification_status()`, `check_trust_score()`, `check_withdrawal_limit()`, and `run_financial_fraud_checks()` returning structured validation payloads.
+4. **Improved Wallet Transaction History**: `WalletTransactionsView` provides unified summaries across cash transactions, coin transactions, and withdrawal records.

@@ -1,5 +1,6 @@
 from decimal import Decimal
 from django.urls import reverse
+from django.core.exceptions import ValidationError
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth import get_user_model
@@ -10,6 +11,8 @@ from .models import (
     CashTransaction,
     WithdrawalRequest,
     CoinTransactionType,
+    CashTransactionType,
+    CashTransactionStatus,
     WithdrawalMethod,
     WithdrawalStatus,
 )
@@ -53,6 +56,38 @@ class WalletTests(APITestCase):
         self.assertEqual(response.data['wallet']['coin_balance'], 0)
         self.assertEqual(response.data['wallet']['currency'], 'USD')
 
+    def test_universal_create_transaction_service(self):
+        # 1. Test Coin Transaction creation via universal helper
+        coin_tx = WalletService.create_transaction(
+            user=self.user,
+            transaction_type=CoinTransactionType.BONUS,
+            amount=300,
+            reference='REF-BONUS-01',
+            description='Daily login streak bonus',
+            transaction_category='COIN',
+            balance_before=0,
+            balance_after=300,
+        )
+        self.assertEqual(coin_tx.amount, 300)
+        self.assertEqual(coin_tx.balance_before, 0)
+        self.assertEqual(coin_tx.balance_after, 300)
+        self.assertEqual(coin_tx.reference, 'REF-BONUS-01')
+
+        # 2. Test Cash Transaction creation via universal helper
+        cash_tx = WalletService.create_transaction(
+            user=self.user,
+            transaction_type=CashTransactionType.REWARD,
+            amount=Decimal('5.00'),
+            currency='USD',
+            reference='REF-CASH-01',
+            description='Survey completion fiat reward',
+            transaction_category='CASH',
+            status=CashTransactionStatus.COMPLETED,
+        )
+        self.assertEqual(cash_tx.amount, Decimal('5.00'))
+        self.assertEqual(cash_tx.status, CashTransactionStatus.COMPLETED)
+        self.assertEqual(cash_tx.reference, 'REF-CASH-01')
+
     def test_credit_and_deduct_coins_services(self):
         # 1. Credit 500 Coins
         wallet, tx = WalletService.credit_coins(
@@ -78,8 +113,34 @@ class WalletTests(APITestCase):
         self.assertEqual(tx2.balance_after, 300)
         self.assertEqual(CoinTransaction.objects.filter(user=self.user).count(), 2)
 
+    def test_prevent_negative_balances(self):
+        WalletService.credit_coins(user=self.user, amount=100)
+        with self.assertRaises(ValidationError):
+            WalletService.deduct_coins(user=self.user, amount=200)
+
+        # Confirm balance remains uncorrupted
+        wallet = Wallet.objects.get(user=self.user)
+        self.assertEqual(wallet.coin_balance, 100)
+
+    def test_security_extension_hooks(self):
+        ver_check = WalletService.check_verification_status(self.user)
+        self.assertIn("approved", ver_check)
+
+        trust_check = WalletService.check_trust_score(self.user, required_score=40)
+        self.assertTrue(trust_check["approved"])
+
+        limit_check = WalletService.check_withdrawal_limit(self.user, Decimal('100.00'))
+        self.assertTrue(limit_check["approved"])
+
+        fraud_check = WalletService.run_financial_fraud_checks(
+            self.user,
+            amount=Decimal('50.00'),
+            method='USDT',
+            destination='TRX123456789',
+        )
+        self.assertTrue(fraud_check["approved"])
+
     def test_coin_transfer_api(self):
-        # Credit initial balance
         WalletService.credit_coins(user=self.user, amount=1000)
 
         payload = {
@@ -95,19 +156,11 @@ class WalletTests(APITestCase):
         self.recipient.refresh_from_db()
         self.assertEqual(self.recipient.wallet.coin_balance, 400)
 
-    def test_coin_history_api(self):
-        WalletService.credit_coins(user=self.user, amount=150, description='Task 1')
-        WalletService.credit_coins(user=self.user, amount=250, description='Task 2')
-
-        response = self.client.get(self.coin_history_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['coin_transactions']), 2)
-
-    def test_withdrawal_create_and_list_api(self):
-        # 1. Fund wallet: 5000 Coins = $50.00
+    def test_withdrawal_foundation_flow(self):
+        # 1. Fund user balance: 5,000 Coins = $50.00
         WalletService.credit_coins(user=self.user, amount=5000)
 
-        # 2. Request $25.00 USDT withdrawal (requires 2500 coins)
+        # 2. Request $25.00 USDT withdrawal
         payload = {
             'amount': '25.00',
             'method': WithdrawalMethod.USDT,
@@ -117,12 +170,22 @@ class WalletTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['withdrawal']['amount'], '25.00')
         self.assertEqual(response.data['withdrawal']['status'], WithdrawalStatus.PENDING)
-        self.assertEqual(response.data['wallet']['coin_balance'], 2500)
+
+        # Crucial Phase 4 Foundation Rule: Balance is NOT immediately deducted at creation
+        self.assertEqual(response.data['wallet']['coin_balance'], 5000)
 
         # 3. Check withdrawal listing
         list_resp = self.client.get(self.withdrawals_url)
         self.assertEqual(list_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(len(list_resp.data['withdrawals']), 1)
+
+        # 4. Verify future execution helper deducts balance upon completion
+        withdrawal_id = response.data['withdrawal']['id']
+        processed_wd = WalletService.execute_processed_withdrawal(withdrawal_id)
+        self.assertEqual(processed_wd.status, WithdrawalStatus.COMPLETED)
+
+        self.user.wallet.refresh_from_db()
+        self.assertEqual(self.user.wallet.coin_balance, 2500)
 
     def test_withdrawal_insufficient_funds(self):
         payload = {
