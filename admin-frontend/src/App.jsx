@@ -17,6 +17,7 @@ import { GamificationSettingsPage } from './pages/GamificationSettingsPage';
 import { SpinWheelSettingsPage } from './pages/SpinWheelSettingsPage';
 import { XPSettingsPage } from './pages/XPSettingsPage';
 import { BadgesManagementPage } from './pages/BadgesManagementPage';
+import { CampaignsPage } from './pages/CampaignsPage';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, isAdmin } = useAuth();
@@ -43,6 +44,7 @@ export function App() {
               }
             >
               <Route index element={<DashboardPage />} />
+              <Route path="campaigns" element={<CampaignsPage />} />
               <Route path="ai-studio" element={<AISettingsPage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="sessions" element={<WatchSessionsPage />} />

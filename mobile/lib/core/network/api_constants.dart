@@ -78,4 +78,13 @@ class ApiConstants {
   static String trackingEvents(String id) => '/tracking/sessions/$id/events/';
   static String trackingComplete(String id) => '/tracking/sessions/$id/complete/';
   static String trackingAbandon(String id) => '/tracking/sessions/$id/abandon/';
+
+  // Phase 5.5: Campaigns & Advertising Platform Endpoints
+  static const String campaigns = '/campaigns/';
+  static const String campaignCreate = '/campaigns/create/';
+  static String campaignDetails(String id) => '/campaigns/$id/';
+  static String campaignSubmit(String id) => '/campaigns/$id/submit/';
+  static String campaignApprove(String id) => '/campaigns/$id/approve/';
+  static String campaignReject(String id) => '/campaigns/$id/reject/';
+  static String campaignPause(String id) => '/campaigns/$id/pause/';
 }

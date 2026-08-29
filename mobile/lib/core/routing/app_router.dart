@@ -14,6 +14,9 @@ import '../../features/marketplace/screens/marketplace_screen.dart';
 import '../../features/community/screens/community_screen.dart';
 import '../../features/verification/screens/verification_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/campaigns/models/campaign_model.dart';
+import '../../features/campaigns/screens/campaign_list_screen.dart';
+import '../../features/campaigns/screens/campaign_detail_screen.dart';
 import '../../features/wallet/screens/transaction_history_screen.dart';
 import '../../features/wallet/screens/withdraw_screen.dart';
 import '../widgets/feedback/app_error_state.dart';
@@ -89,6 +92,20 @@ class AppRouter {
 
       case AppRoutes.settings:
         return _buildRoute(const SettingsScreen(), settings);
+
+      case AppRoutes.campaigns:
+        return _buildRoute(const CampaignListScreen(), settings);
+
+      case AppRoutes.campaignDetails:
+        final campaign = settings.arguments is CampaignModel ? settings.arguments as CampaignModel : null;
+        final campaignId = settings.arguments is String ? settings.arguments as String : null;
+        return _buildRoute(
+          CampaignDetailScreen(
+            initialCampaign: campaign,
+            campaignId: campaignId,
+          ),
+          settings,
+        );
 
       default:
         return _buildRoute(

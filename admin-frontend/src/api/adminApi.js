@@ -184,4 +184,35 @@ export const adminApi = {
     const res = await apiClient.post('/admin/tokens/', { token_id: tokenId });
     return res.data;
   },
+
+  // Campaigns & Advertising Platform (Phase 5.5)
+  getCampaigns: async (params = {}) => {
+    const res = await apiClient.get('/campaigns/', { params });
+    return res.data;
+  },
+  createCampaign: async (data) => {
+    const res = await apiClient.post('/campaigns/create/', data);
+    return res.data;
+  },
+  getCampaignDetails: async (id) => {
+    const res = await apiClient.get(`/campaigns/${id}/`);
+    return res.data;
+  },
+  submitCampaignForReview: async (id) => {
+    const res = await apiClient.post(`/campaigns/${id}/submit/`);
+    return res.data;
+  },
+  approveCampaign: async (id) => {
+    const res = await apiClient.post(`/campaigns/${id}/approve/`);
+    return res.data;
+  },
+  rejectCampaign: async (id, reason = '') => {
+    const res = await apiClient.post(`/campaigns/${id}/reject/`, { reason });
+    return res.data;
+  },
+  pauseCampaign: async (id) => {
+    const res = await apiClient.post(`/campaigns/${id}/pause/`);
+    return res.data;
+  },
 };
+

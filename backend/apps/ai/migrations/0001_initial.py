@@ -8,6 +8,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ('tasks', '0005_delete_aiproviderconfig'),
     ]
 
     operations = [

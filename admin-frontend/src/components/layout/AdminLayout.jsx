@@ -10,6 +10,7 @@ export function AdminLayout() {
   const getPageTitle = (pathname) => {
     switch (pathname) {
       case '/': return 'Dashboard Overview';
+      case '/campaigns': return 'Campaign Management';
       case '/ai-studio': return 'AI Keyword Studio & Models';
       case '/tasks': return 'Video Tasks Management';
       case '/sessions': return 'Live Watch Sessions';

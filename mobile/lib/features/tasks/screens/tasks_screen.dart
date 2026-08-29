@@ -60,11 +60,42 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Earn & Tasks',
-                    style: AppTypography.headlineMedium.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Earn & Tasks',
+                        style: AppTypography.headlineMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.campaigns),
+                        borderRadius: BorderRadius.circular(AppConstants.radiusSm),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(AppConstants.radiusSm),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.campaign_rounded, size: 16, color: AppColors.primaryLight),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Campaigns',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.primaryLight,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppConstants.space12),
                   // Search Input

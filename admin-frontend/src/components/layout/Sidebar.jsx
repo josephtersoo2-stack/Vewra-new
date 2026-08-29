@@ -15,6 +15,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Megaphone,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -23,6 +24,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }) {
 
   const navItems = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/campaigns', label: 'Campaigns', icon: Megaphone },
     { to: '/ai-studio', label: 'AI Keyword Studio', icon: Sparkles },
     { to: '/tasks', label: 'Video Tasks', icon: Video },
     { to: '/sessions', label: 'Watch Sessions', icon: PlayCircle },
