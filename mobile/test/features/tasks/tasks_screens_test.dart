@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vewra_mobile/core/constants/app_strings.dart';
 import 'package:vewra_mobile/features/tasks/screens/tasks_screen.dart';
 import 'package:vewra_mobile/features/tasks/screens/task_details_screen.dart';
-import 'package:vewra_mobile/services/dummy_data_service.dart';
+import 'package:vewra_mobile/features/tasks/models/task_model.dart';
 
 void main() {
   group('Tasks Screens Tests', () {
@@ -28,8 +28,20 @@ void main() {
       expect(find.widgetWithText(FilterChip, 'Challenges'), findsOneWidget);
     });
 
-    testWidgets('TaskDetailsScreen renders task title, instructions, and start button', (WidgetTester tester) async {
-      final sampleTask = DummyDataService.tasks.first;
+    testWidgets('TaskDetailsScreen renders thumbnail preview, keyword copy card, and start button', (WidgetTester tester) async {
+      const sampleTask = TaskModel(
+        id: 'test_task_1',
+        title: 'Top 10 Flutter Features',
+        channelName: 'TechVanguard',
+        description: 'Explore new Flutter UI widgets.',
+        thumbnailUrl: '',
+        youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        searchKeywords: 'Flutter 3.22 features tutorial',
+        rewardCoins: 120,
+        rewardFiat: 1.20,
+        durationMinutes: 4,
+        category: 'Video Tasks',
+      );
 
       await tester.pumpWidget(
         ProviderScope(
@@ -41,9 +53,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.text(AppStrings.taskDetails), findsOneWidget);
-      expect(find.text(sampleTask.title), findsOneWidget);
-      expect(find.text(sampleTask.channelName), findsOneWidget);
-      expect(find.text(AppStrings.searchInstructions), findsOneWidget);
+      expect(find.text('YouTube Video Task'), findsOneWidget);
+      expect(find.text('Assigned Search Keyword'), findsOneWidget);
       expect(find.text(sampleTask.searchKeywords), findsOneWidget);
       expect(find.byKey(const Key('start_watching_button')), findsOneWidget);
     });

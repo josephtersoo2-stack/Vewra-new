@@ -17,12 +17,19 @@ dependencies:
   # State Management (Phase 2+)
   flutter_riverpod: ^2.6.1
 
+  # In-App Browser & YouTube Tracking
+  flutter_inappwebview: ^6.1.5
+
   # Networking (Phase 2+)
   dio: ^5.7.0
 
   # Secure Local Storage & Preferences (Phase 2+)
   flutter_secure_storage: ^9.2.2
   shared_preferences: ^2.3.3
+
+  # Biometric Authentication & Image Picker
+  local_auth: ^2.3.0
+  image_picker: ^1.1.2
 
   # Environment Configuration (Phase 2+)
   flutter_dotenv: ^5.2.1
@@ -35,7 +42,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # assets:
-  #   - .env
-  #   - assets/images/
-  #   - assets/icons/
+  assets:
+    - .env

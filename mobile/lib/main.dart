@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'core/constants/app_strings.dart';
 import 'core/routing/app_routes.dart';
 import 'core/routing/app_router.dart';
@@ -22,8 +23,8 @@ void main() async {
   runApp(const ProviderScope(child: VewraApp()));
 }
 
-/// Root Application Widget for VEWRA.
-class VewraApp extends StatelessWidget {
+/// Root Application Widget for VEWRA with dynamic Light & Dark mode support.
+class VewraApp extends ConsumerWidget {
   final String initialRoute;
 
   const VewraApp({
@@ -32,17 +33,17 @@ class VewraApp extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return ProviderScope(
-      child: MaterialApp(
-        title: AppStrings.appName,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.dark,
-        initialRoute: initialRoute,
-        onGenerateRoute: AppRouter.generateRoute,
-      ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
+    return MaterialApp(
+      title: AppStrings.appName,
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
+      initialRoute: initialRoute,
+      onGenerateRoute: AppRouter.generateRoute,
     );
   }
 }

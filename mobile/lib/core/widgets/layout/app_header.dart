@@ -30,8 +30,13 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textPrimary = isDark ? AppColors.textPrimary : AppColors.lightTextPrimary;
+    final textSecondary = isDark ? AppColors.textSecondary : AppColors.lightTextSecondary;
+
     return Container(
-      color: AppColors.background,
+      color: theme.scaffoldBackgroundColor,
       padding: const EdgeInsets.symmetric(
         horizontal: AppConstants.space16,
         vertical: AppConstants.space8,
@@ -65,7 +70,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                   title,
                   style: AppTypography.headlineSmall.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: textPrimary,
                   ),
                 ),
                 if (subtitle != null) ...[
@@ -73,7 +78,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                   Text(
                     subtitle!,
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                      color: textSecondary,
                     ),
                   ),
                 ],

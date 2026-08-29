@@ -34,15 +34,25 @@ class GreetingHeader extends StatelessWidget {
 
         // Avatar with border
         Container(
-          width: 40,
-          height: 40,
+          width: 42,
+          height: 42,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: AppColors.primaryGradient,
             border: Border.all(color: AppColors.primaryLight, width: 1.5),
           ),
-          child: const Center(
-            child: Icon(Icons.person_rounded, color: Colors.white, size: 22),
+          child: ClipOval(
+            child: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+                ? Image.network(
+                    user.avatarUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, _) => const Center(
+                      child: Icon(Icons.person_rounded, color: Colors.white, size: 22),
+                    ),
+                  )
+                : const Center(
+                    child: Icon(Icons.person_rounded, color: Colors.white, size: 22),
+                  ),
           ),
         ),
         const SizedBox(width: AppConstants.space10),

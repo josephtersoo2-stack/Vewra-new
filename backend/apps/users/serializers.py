@@ -31,6 +31,8 @@ class UserStatisticsSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     """Serializer for extended user ecosystem profile."""
 
+    avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = UserProfile
         fields = (
@@ -72,6 +74,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'updated_at',
         )
 
+    def get_avatar(self, obj):
+        if obj.avatar:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.avatar.url)
+            return obj.avatar.url
+        return None
+
 
 class UserSerializer(serializers.ModelSerializer):
     """Full private user serializer with profile, preferences, and statistics."""
@@ -91,12 +101,23 @@ class UserSerializer(serializers.ModelSerializer):
             'currency',
             'timezone',
             'is_verified',
+            'is_staff',
+            'is_superuser',
             'created_at',
             'profile',
             'preferences',
             'statistics',
         )
-        read_only_fields = ('id', 'is_verified', 'created_at', 'profile', 'preferences', 'statistics')
+        read_only_fields = (
+            'id',
+            'is_verified',
+            'is_staff',
+            'is_superuser',
+            'created_at',
+            'profile',
+            'preferences',
+            'statistics',
+        )
 
 
 class PublicUserProfileSerializer(serializers.ModelSerializer):
@@ -130,6 +151,7 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
     timezone = serializers.CharField(required=False)
     gender = serializers.CharField(required=False)
     date_of_birth = serializers.DateField(required=False, allow_null=True)
+    avatar = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = User
@@ -144,11 +166,12 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             'timezone',
             'gender',
             'date_of_birth',
+            'avatar',
         )
 
     def update(self, instance, validated_data):
         profile_fields = [
-            'display_name', 'bio', 'city', 'language', 'gender', 'date_of_birth'
+            'display_name', 'bio', 'city', 'language', 'gender', 'date_of_birth', 'avatar'
         ]
         shared_fields = ['country', 'currency', 'timezone']
 

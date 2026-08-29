@@ -18,6 +18,7 @@ class TrackingRepository {
     required int sequence,
     double? playbackPosition,
     DateTime? clientTimestamp,
+    bool isGoogleAuthenticated = true,
   }) =>
       _apiService.sendHeartbeat(
         sessionId: sessionId,
@@ -25,6 +26,7 @@ class TrackingRepository {
         sequence: sequence,
         playbackPosition: playbackPosition,
         clientTimestamp: clientTimestamp,
+        isGoogleAuthenticated: isGoogleAuthenticated,
       );
 
   Future<Map<String, dynamic>> sendEvent({

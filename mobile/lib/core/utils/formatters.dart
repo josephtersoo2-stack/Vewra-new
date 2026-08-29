@@ -35,6 +35,27 @@ class Formatters {
     return '${hours}h ${remainingMins}m';
   }
 
+  /// Formats seconds into human-readable duration e.g. "45s", "2 mins", "1h 15m"
+  static String formatSeconds(int seconds) {
+    if (seconds < 60) {
+      return '${seconds}s';
+    }
+    final mins = seconds ~/ 60;
+    final remainingSecs = seconds % 60;
+    if (mins < 60) {
+      if (remainingSecs == 0) {
+        return '$mins min${mins > 1 ? 's' : ''}';
+      }
+      return '${mins}m ${remainingSecs}s';
+    }
+    final hours = mins ~/ 60;
+    final remMins = mins % 60;
+    if (remMins == 0) {
+      return '${hours}h';
+    }
+    return '${hours}h ${remMins}m';
+  }
+
   /// Formats seconds into mm:ss timer format
   static String formatTimer(int seconds) {
     final mins = seconds ~/ 60;

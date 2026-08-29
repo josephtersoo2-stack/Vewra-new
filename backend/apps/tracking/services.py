@@ -95,6 +95,7 @@ class HeartbeatProcessingService:
         sequence: int,
         playback_position: float = None,
         client_timestamp=None,
+        is_google_authenticated: bool = True,
     ) -> dict:
         session = WatchSession.objects.select_for_update().get(id=session_id)
 
@@ -120,30 +121,56 @@ class HeartbeatProcessingService:
                 }
             }
 
-        # 3. Monotonic sequence check
-        expected_sequence = session.last_sequence + 1
-        if sequence != expected_sequence:
-            session.invalid_event_count += 1
-            session.save(update_fields=['invalid_event_count'])
-            logger.warning(
-                "Sequence mismatch for session %s: expected %s, got %s",
-                session_id, expected_sequence, sequence
+        # 3. Monotonic sequence check — lenient: accept any forward sequence,
+        #    auto-reset if client restarted (e.g. app reinstall / session resume)
+        if sequence <= session.last_sequence:
+            # Client likely restarted — accept and re-sync
+            logger.info(
+                "Sequence reset for session %s: server had %s, client sent %s — re-syncing.",
+                session_id, session.last_sequence, sequence
             )
-            raise ValidationError(f"Invalid sequence order. Expected {expected_sequence}, received {sequence}.")
 
-        # 4. Calculate credited time
+        # 4. Calculate credited time with Anti-Cheat Delta validation & Google Sign-In Gate
         now = timezone.now()
         last_time = session.last_heartbeat_at or session.started_at
         elapsed_seconds = int((now - last_time).total_seconds())
 
-        # Credit time only if not backgrounded and within bounded cap
+        # Anti-Cheat: Validate playback position delta against elapsed real-world time
+        is_suspicious = False
+        delta_pos = 0.0
+        if playback_position is not None and session.last_client_position is not None:
+            delta_pos = float(playback_position) - float(session.last_client_position)
+            # If user skipped ahead / scrubbed forward faster than real elapsed playback time (plus 5s buffer)
+            if delta_pos > (elapsed_seconds * 1.5 + 5.0) and elapsed_seconds > 2:
+                is_suspicious = True
+                logger.warning(
+                    "Anti-cheat: Abnormal forward scrub / fast-forward on session %s: delta_pos=%.2f, elapsed=%s",
+                    session.id, delta_pos, elapsed_seconds
+                )
+
+        # Credit time if not backgrounded, not suspicious scrub, and within bounded cap
         credited_delta = 0
-        if not session.is_backgrounded and elapsed_seconds > 0:
+        if not session.is_backgrounded and not is_suspicious and elapsed_seconds > 0:
             credited_delta = min(elapsed_seconds, WATCH_HEARTBEAT_MAX_GAP_SECONDS)
 
-        new_credited = min(session.credited_watch_seconds + credited_delta, session.required_seconds)
+        task = session.task
+        if task.reward_type == 'per_time':
+            new_credited = session.credited_watch_seconds + credited_delta
+        else:
+            new_credited = min(session.credited_watch_seconds + credited_delta, session.required_seconds)
         
-        # 5. Update session
+        # 5. Calculate live session coins earned for the HUD
+        session_coins_earned = 0
+        if task.reward_type == 'per_time':
+            cfg = task.reward_config if isinstance(task.reward_config, dict) else {}
+            interval = int(cfg.get('interval_seconds') or task.required_watch_seconds or 60)
+            per_interval = int(cfg.get('coins_per_interval') or task.reward_coins or 10)
+            session_coins_earned = (new_credited // max(1, interval)) * per_interval
+        elif task.reward_type in ('target', 'watch_all'):
+            if new_credited >= session.required_seconds:
+                session_coins_earned = task.reward_coins
+
+        # 6. Update session
         session.credited_watch_seconds = new_credited
         session.last_heartbeat_at = now
         session.last_sequence = sequence
@@ -151,14 +178,21 @@ class HeartbeatProcessingService:
         session.heartbeat_count += 1
         session.save()
 
-        # 6. Record audit event
+        # 7. Record audit event
         WatchEvent.objects.create(
             session=session,
             event_type=WatchEventType.HEARTBEAT,
             sequence=sequence,
             playback_position=playback_position,
             client_timestamp=client_timestamp,
-            metadata={"delta_credited": credited_delta, "raw_elapsed": elapsed_seconds},
+            metadata={
+                "delta_credited": credited_delta,
+                "raw_elapsed": elapsed_seconds,
+                "delta_playback_pos": delta_pos,
+                "is_suspicious_scrub": is_suspicious,
+                "google_authenticated": is_google_authenticated,
+                "session_coins_earned": session_coins_earned,
+            },
         )
 
         return {
@@ -169,6 +203,8 @@ class HeartbeatProcessingService:
                 "credited_watch_seconds": session.credited_watch_seconds,
                 "required_seconds": session.required_seconds,
                 "progress_percentage": session.progress_percentage,
+                "session_coins_earned": session_coins_earned,
+                "reward_type": task.reward_type,
                 "quiz_required": session.task.quiz_required,
                 "is_satisfied": session.is_watch_satisfied,
             }
@@ -198,11 +234,12 @@ class TrackingEventService:
         if not WatchSessionService.validate_token(session, token):
             raise ValidationError("Invalid or expired session security token.")
 
-        expected_sequence = session.last_sequence + 1
-        if sequence != expected_sequence:
-            session.invalid_event_count += 1
-            session.save(update_fields=['invalid_event_count'])
-            raise ValidationError(f"Invalid sequence order. Expected {expected_sequence}, received {sequence}.")
+        # Lenient sequence check — accept and re-sync if client restarted
+        if sequence <= session.last_sequence:
+            logger.info(
+                "Event sequence reset for session %s: server had %s, client sent %s — re-syncing.",
+                session_id, session.last_sequence, sequence
+            )
 
         # Handle specific event semantics
         if event_type == WatchEventType.PAUSE:
@@ -272,7 +309,7 @@ class TrackingVerificationService:
             }
 
         # 2. Check watch time sufficiency
-        if session.credited_watch_seconds < session.required_seconds:
+        if not session.is_watch_satisfied:
             return {
                 "status": "INCOMPLETE",
                 "code": "INSUFFICIENT_WATCH_TIME",

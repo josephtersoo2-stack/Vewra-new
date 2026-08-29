@@ -1,3 +1,4 @@
+import '../core/network/api_constants.dart';
 import '../features/profile/models/preference_model.dart';
 import '../features/profile/models/statistics_model.dart';
 
@@ -65,10 +66,29 @@ class UserModel {
     this.statistics = const UserStatisticsModel(),
   });
 
+  static String? _resolveAvatarUrl(dynamic raw) {
+    if (raw == null) return null;
+    final str = raw.toString().trim();
+    if (str.isEmpty || str == 'null') return null;
+    if (str.startsWith('http://') || str.startsWith('https://')) {
+      return str;
+    }
+    final cleanPath = str.startsWith('/') ? str : '/$str';
+    final base = ApiConstants.baseUrl;
+    final uri = Uri.tryParse(base);
+    if (uri != null) {
+      final origin = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
+      return '$origin$cleanPath';
+    }
+    return 'http://127.0.0.1:8000$cleanPath';
+  }
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
     final profile = json['profile'] as Map<String, dynamic>? ?? {};
     final prefsJson = json['preferences'] as Map<String, dynamic>? ?? {};
     final statsJson = json['statistics'] as Map<String, dynamic>? ?? {};
+
+    final rawAvatar = profile['avatar'] ?? json['avatarUrl'] ?? json['avatar'];
 
     return UserModel(
       id: json['id']?.toString() ?? '',
@@ -77,7 +97,7 @@ class UserModel {
       displayName: profile['display_name']?.toString() ??
           json['displayName']?.toString() ??
           (json['username']?.toString() ?? ''),
-      avatarUrl: profile['avatar']?.toString() ?? json['avatarUrl']?.toString(),
+      avatarUrl: _resolveAvatarUrl(rawAvatar),
       bio: profile['bio']?.toString() ?? json['bio']?.toString() ?? '',
       country: profile['country']?.toString() ??
           json['country']?.toString() ??

@@ -52,3 +52,9 @@ backend/media/
 # Logs & Cache
 *.log
 .system_generated/
+
+# Node / Frontend
+node_modules/
+**/node_modules/
+dist/
+**/dist/

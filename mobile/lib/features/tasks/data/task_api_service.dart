@@ -129,4 +129,49 @@ class TaskApiService {
     }
     throw Exception(response.data?['message'] ?? 'Failed to submit quiz.');
   }
+
+  /// Fetches metadata and generated keywords for a YouTube URL.
+  Future<Map<String, dynamic>> fetchYouTubeMeta(String youtubeUrl) async {
+    final response = await _apiClient.dio.post(
+      ApiConstants.taskFetchMeta,
+      data: {'youtube_url': youtubeUrl},
+    );
+    if (response.statusCode == 200 && response.data != null) {
+      return response.data['data'] as Map<String, dynamic>;
+    }
+    throw Exception(response.data?['message'] ?? 'Failed to fetch YouTube metadata.');
+  }
+
+  /// Creates and publishes a new video task.
+  Future<TaskModel> createVideoTask({
+    required String sourceUrl,
+    required String title,
+    required String channelName,
+    required String thumbnailUrl,
+    required String rewardType,
+    required int rewardCoins,
+    required int rewardXp,
+    required int requiredWatchSeconds,
+    required List<String> keywords,
+  }) async {
+    final response = await _apiClient.dio.post(
+      ApiConstants.taskCreate,
+      data: {
+        'source_url': sourceUrl,
+        'title': title,
+        'channel_name': channelName,
+        'thumbnail_url': thumbnailUrl,
+        'reward_type': rewardType,
+        'reward_coins': rewardCoins,
+        'reward_xp': rewardXp,
+        'required_watch_seconds': requiredWatchSeconds,
+        'keywords': keywords,
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return TaskModel.fromJson(response.data['task'] as Map<String, dynamic>);
+    }
+    throw Exception(response.data?['message'] ?? 'Failed to create task.');
+  }
 }
+

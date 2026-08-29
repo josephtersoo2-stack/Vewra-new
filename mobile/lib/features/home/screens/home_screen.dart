@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/constants/app_constants.dart';
@@ -6,15 +7,19 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../services/dummy_data_service.dart';
 import '../../../models/task_model.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../profile/providers/profile_provider.dart';
+import '../../wallet/providers/wallet_provider.dart';
+import '../../tasks/providers/task_feed_provider.dart';
 import '../widgets/greeting_header.dart';
-import '../widgets/wallet_summary_card.dart';
+import '../widgets/home_ad_spot_card.dart';
 import '../widgets/daily_goal_card.dart';
 import '../../../core/widgets/cards/level_progress_card.dart';
 import '../../../core/widgets/cards/app_card.dart';
 import '../../tasks/widgets/task_card.dart';
 
 /// Home Dashboard screen for VEWRA with level progress, ecosystem shortcuts, and task feeds.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   final VoidCallback? onSwitchToTasks;
   final VoidCallback? onSwitchToWallet;
   final VoidCallback? onSwitchToRewards;
@@ -27,10 +32,14 @@ class HomeScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final user = DummyDataService.currentUser;
-    final wallet = DummyDataService.currentWallet;
-    final tasks = DummyDataService.tasks;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+    final profileState = ref.watch(profileProvider);
+    final walletState = ref.watch(walletProvider);
+    final taskFeedState = ref.watch(taskFeedProvider);
+
+    final user = profileState.user ?? authState.user ?? DummyDataService.currentUser;
+    final tasks = taskFeedState.tasks;
     final tournament = DummyDataService.activeTournament;
 
     return SingleChildScrollView(
@@ -52,12 +61,8 @@ class HomeScreen extends StatelessWidget {
 
           const SizedBox(height: AppConstants.space16),
 
-          // 2. Hero Wallet Summary Card
-          WalletSummaryCard(
-            wallet: wallet,
-            onWalletTap: onSwitchToWallet,
-            onWithdrawTap: onSwitchToWallet,
-          ),
+          // 2. Featured Demo Ad Spot (Replaces Balance Card)
+          const HomeAdSpotCard(),
 
           const SizedBox(height: AppConstants.space16),
 
@@ -214,20 +219,49 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppConstants.space12),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: tasks.take(3).length,
-            separatorBuilder: (context, index) => const SizedBox(height: AppConstants.space16),
-            itemBuilder: (context, index) {
-              final task = tasks[index];
-              return TaskCard(
-                task: task,
-                onTap: () => _openTaskDetails(context, task),
-                onStartTap: () => _openTaskDetails(context, task),
-              );
-            },
-          ),
+          if (tasks.isEmpty && !taskFeedState.isLoading)
+            AppCard(
+              variant: AppCardVariant.outlined,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.play_circle_outline_rounded, size: 36, color: AppColors.textMuted.withValues(alpha: 0.7)),
+                    const SizedBox(height: 10),
+                    Text(
+                      'No tasks available right now',
+                      style: AppTypography.titleSmall.copyWith(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tasks created in the admin portal will appear here automatically.',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (taskFeedState.isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24.0),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: tasks.take(3).length,
+              separatorBuilder: (context, index) => const SizedBox(height: AppConstants.space16),
+              itemBuilder: (context, index) {
+                final task = tasks[index];
+                return TaskCard(
+                  task: task,
+                  onTap: () => _openTaskDetails(context, task),
+                  onStartTap: () => _openTaskDetails(context, task),
+                );
+              },
+            ),
           const SizedBox(height: AppConstants.space32),
         ],
       ),

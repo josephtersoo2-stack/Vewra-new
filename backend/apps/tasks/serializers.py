@@ -13,6 +13,8 @@ from .models import (
 
 class TaskListSerializer(serializers.ModelSerializer):
     """Compact serializer for task catalog/feed."""
+    reward_summary = serializers.ReadOnlyField()
+
     class Meta:
         model = Task
         fields = [
@@ -23,6 +25,11 @@ class TaskListSerializer(serializers.ModelSerializer):
             'status',
             'thumbnail_url',
             'channel_name',
+            'video_id',
+            'keywords',
+            'reward_type',
+            'reward_config',
+            'reward_summary',
             'reward_coins',
             'reward_cash',
             'reward_xp',
@@ -38,6 +45,9 @@ class TaskListSerializer(serializers.ModelSerializer):
 
 class TaskDetailSerializer(serializers.ModelSerializer):
     """Comprehensive serializer for task details screen."""
+    reward_summary = serializers.ReadOnlyField()
+    instruction = serializers.SerializerMethodField()
+
     class Meta:
         model = Task
         fields = [
@@ -52,7 +62,13 @@ class TaskDetailSerializer(serializers.ModelSerializer):
             'source_url',
             'source_platform',
             'channel_name',
+            'video_id',
+            'keywords',
             'search_keywords',
+            'reward_type',
+            'reward_config',
+            'reward_summary',
+            'instruction',
             'reward_coins',
             'reward_cash',
             'reward_xp',
@@ -70,6 +86,12 @@ class TaskDetailSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = fields
+
+    def get_instruction(self, obj):
+        from .services import generate_randomized_instruction
+        request = self.context.get('request')
+        user = request.user if request and request.user.is_authenticated else None
+        return generate_randomized_instruction(obj, user)
 
 
 class TaskEligibilityRequirementsSerializer(serializers.Serializer):

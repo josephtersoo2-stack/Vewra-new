@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,13 +33,51 @@ class TaskDetailsScreen extends ConsumerStatefulWidget {
 
 class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
   bool _isStarting = false;
+  String _currentSearchKeyword = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _pickRandomKeyword(widget.task);
+  }
+
+  void _pickRandomKeyword(TaskModel? task) {
+    final pool = <String>[];
+    if (task != null) {
+      if (task.keywords.isNotEmpty) {
+        pool.addAll(task.keywords);
+      } else if (task.searchKeywords.isNotEmpty) {
+        pool.add(task.searchKeywords);
+      }
+    }
+    if (pool.isNotEmpty) {
+      final random = Random();
+      final selected = pool[random.nextInt(pool.length)];
+      setState(() {
+        _currentSearchKeyword = selected;
+      });
+    }
+  }
 
   Future<void> _handleStartTask(TaskModel task) async {
+    final effectiveTask = _currentSearchKeyword.isNotEmpty
+        ? task.copyWith(searchKeywords: _currentSearchKeyword)
+        : task;
+
+    if (effectiveTask.isCompleted) {
+      Navigator.pushNamed(
+        context,
+        AppRoutes.browser,
+        arguments: effectiveTask,
+      );
+      return;
+    }
+
     setState(() => _isStarting = true);
 
     try {
       final repo = ref.read(taskRepositoryProvider);
-      final result = await repo.startTask(task.id);
+      final result = await repo.startTask(effectiveTask.id);
 
       final watchSession = result['watch_session'] as WatchSessionModel?;
       if (watchSession != null && watchSession.watchToken != null) {
@@ -54,17 +93,17 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
         Navigator.pushNamed(
           context,
           AppRoutes.browser,
-          arguments: task,
+          arguments: effectiveTask,
         );
       }
     } catch (e) {
       setState(() => _isStarting = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.error,
-          ),
+        // Always allow the user to open and watch the video freely
+        Navigator.pushNamed(
+          context,
+          AppRoutes.browser,
+          arguments: effectiveTask,
         );
       }
     }
@@ -83,6 +122,10 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
           title: 'Video Task Overview',
           rewardCoins: 20,
         );
+
+    final displayKeyword = _currentSearchKeyword.isNotEmpty
+        ? _currentSearchKeyword
+        : effectiveTask.searchKeywords;
 
     final eligibility = detailsAsync?.eligibility;
     final isLocked = eligibility != null && !eligibility.eligible;
@@ -190,7 +233,7 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                                 const Icon(Icons.timer_outlined, size: 14, color: Colors.white),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '${effectiveTask.requiredWatchSeconds}s required',
+                                  '${Formatters.formatSeconds(effectiveTask.requiredWatchSeconds)} required',
                                   style: AppTypography.labelSmall.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -204,37 +247,50 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: AppConstants.space16),
-                  // Title & Channel
-                  Text(
-                    effectiveTask.title,
-                    style: AppTypography.headlineSmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      height: 1.3,
-                    ),
-                  ),
-                  const SizedBox(height: AppConstants.space8),
+                  // Task Category & Metadata Row (No video title)
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(AppConstants.radiusSm),
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
                         ),
-                        child: const Icon(Icons.verified_rounded, size: 16, color: AppColors.primaryLight),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        effectiveTask.channelName.isNotEmpty
-                            ? effectiveTask.channelName
-                            : 'VEWRA Verified Creator',
-                        style: AppTypography.titleSmall.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
+                        child: Text(
+                          'YouTube Video Task',
+                          style: AppTypography.labelMedium.copyWith(
+                            color: AppColors.primaryLight,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
+                      if (effectiveTask.isCompleted || (eligibility?.alreadyCompleted ?? false)) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(AppConstants.radiusSm),
+                            border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.success),
+                              const SizedBox(width: 4),
+                              Text(
+                                '✓ Completed',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.success,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       if (effectiveTask.quizRequired) ...[
-                        const Spacer(),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
@@ -258,7 +314,47 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                       ],
                     ],
                   ),
-                  const SizedBox(height: AppConstants.space20),
+                  const SizedBox(height: AppConstants.space16),
+
+                  // Completed Notice Banner if user already finished this task
+                  if (effectiveTask.isCompleted || (eligibility?.alreadyCompleted ?? false)) ...[
+                    Container(
+                      padding: const EdgeInsets.all(AppConstants.space14),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.12),
+                        borderRadius: AppConstants.borderRadiusMd,
+                        border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.stars_rounded, color: AppColors.success, size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Task Completed & Rewarded',
+                                  style: AppTypography.titleSmall.copyWith(
+                                    color: AppColors.success,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'You earned +${effectiveTask.rewardCoins} coins for this task. You can watch this video freely anytime for personal enjoyment!',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.space16),
+                  ],
                   // Reward Payout Card
                   Container(
                     padding: const EdgeInsets.all(AppConstants.space16),
@@ -279,7 +375,7 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '+${effectiveTask.rewardCoins} Coins',
+                              effectiveTask.rewardSummary,
                               style: AppTypography.headlineMedium.copyWith(
                                 color: AppColors.coinGold,
                                 fontWeight: FontWeight.w800,
@@ -347,8 +443,8 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                   ],
 
                   const SizedBox(height: AppConstants.space20),
-                  // Search Keyword Assistance
-                  if (effectiveTask.searchKeywords.isNotEmpty) ...[
+                  // Search Keyword Assistance & Copy Action
+                  if (displayKeyword.isNotEmpty) ...[
                     AppCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,62 +452,91 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.search_rounded, size: 20, color: AppColors.primaryLight),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        'Search Keyword',
+                                        style: AppTypography.titleSmall.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                               Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.search_rounded, size: 18, color: AppColors.secondary),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    AppStrings.searchInstructions,
-                                    style: AppTypography.titleSmall.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
+                                  if (effectiveTask.keywords.length > 1) ...[
+                                    IconButton(
+                                      onPressed: () => _pickRandomKeyword(effectiveTask),
+                                      icon: const Icon(Icons.shuffle_rounded, size: 18, color: AppColors.secondary),
+                                      tooltip: 'Randomize keyword',
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                    const SizedBox(width: 4),
+                                  ],
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      Clipboard.setData(ClipboardData(text: displayKeyword));
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Copied: "$displayKeyword"'),
+                                          backgroundColor: AppColors.success,
+                                          duration: const Duration(seconds: 2),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.copy_rounded, size: 14),
+                                    label: const Text('Copy'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      minimumSize: const Size(0, 32),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(AppConstants.radiusSm),
+                                      ),
                                     ),
                                   ),
                                 ],
-                              ),
-                              InkWell(
-                                onTap: () {
-                                  Clipboard.setData(ClipboardData(text: effectiveTask.searchKeywords));
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Keyword copied!'),
-                                      duration: Duration(seconds: 1),
-                                    ),
-                                  );
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.copy_rounded, size: 14, color: AppColors.primaryLight),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Copy',
-                                        style: AppTypography.labelSmall.copyWith(
-                                          color: AppColors.primaryLight,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
                               ),
                             ],
                           ),
                           const SizedBox(height: AppConstants.space12),
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                             decoration: BoxDecoration(
                               color: AppColors.surfaceLight,
                               borderRadius: AppConstants.borderRadiusSm,
+                              border: Border.all(color: AppColors.border),
                             ),
                             child: SelectableText(
-                              effectiveTask.searchKeywords,
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: AppColors.textSecondary,
-                                fontStyle: FontStyle.italic,
+                              displayKeyword,
+                              style: AppTypography.titleSmall.copyWith(
+                                color: AppColors.primaryLight,
+                                fontWeight: FontWeight.w700,
                               ),
+                            ),
+                          ),
+                          const SizedBox(height: AppConstants.space12),
+                          Text(
+                            '📌 Instructions:\n'
+                            '1. Tap "Copy" to copy the keyword above.\n'
+                            '2. Tap "Start Watching" below to open YouTube.\n'
+                            '3. Paste keyword into YouTube search.\n'
+                            '4. Tap the video matching the thumbnail shown above to start earning rewards!',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                              height: 1.5,
                             ),
                           ),
                         ],
@@ -492,14 +617,12 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
             ),
             child: AppButton(
               key: const Key('start_watching_button'),
-              text: isLocked
-                  ? 'Requirements Not Met'
+              text: effectiveTask.isCompleted || (eligibility?.alreadyCompleted ?? false)
+                  ? 'Watch Again'
                   : (_isStarting ? 'Starting Session...' : AppStrings.startWatching),
               isLoading: _isStarting,
-              prefixIcon: isLocked
-                  ? const Icon(Icons.lock_rounded, color: Colors.white, size: 20)
-                  : const Icon(Icons.play_circle_filled_rounded, color: Colors.white, size: 22),
-              onPressed: isLocked || _isStarting
+              prefixIcon: const Icon(Icons.play_circle_filled_rounded, color: Colors.white, size: 22),
+              onPressed: _isStarting
                   ? null
                   : () => _handleStartTask(effectiveTask),
             ),

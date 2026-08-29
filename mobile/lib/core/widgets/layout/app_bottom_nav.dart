@@ -84,38 +84,39 @@ class AppBottomNav extends StatelessWidget {
   }) {
     final bool isSelected = currentIndex == index;
 
-    return InkWell(
-      key: Key('nav_tab_$index'),
-      onTap: () => onTap(index),
-      borderRadius: AppConstants.borderRadiusMd,
-      child: AnimatedContainer(
-        duration: AppConstants.animFast,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppConstants.space10,
-          vertical: AppConstants.space6,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,
-          borderRadius: AppConstants.borderRadiusMd,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? activeIcon : icon,
-              size: 22,
-              color: isSelected ? AppColors.primaryLight : AppColors.textTertiary,
-            ),
-            const SizedBox(height: AppConstants.space4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+    return Expanded(
+      child: GestureDetector(
+        key: Key('nav_tab_$index'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onTap(index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            vertical: AppConstants.space8,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,
+            borderRadius: AppConstants.borderRadiusMd,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isSelected ? activeIcon : icon,
+                size: 22,
                 color: isSelected ? AppColors.primaryLight : AppColors.textTertiary,
               ),
-            ),
-          ],
+              const SizedBox(height: AppConstants.space4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? AppColors.primaryLight : AppColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

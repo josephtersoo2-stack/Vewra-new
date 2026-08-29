@@ -31,30 +31,39 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final double radius = borderRadius ?? AppConstants.radiusLg;
     final effectiveBorderRadius = BorderRadius.circular(radius);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final defaultSurface = isDark ? AppColors.surface : AppColors.lightSurface;
+    final defaultElevated = isDark ? AppColors.surfaceElevated : AppColors.lightSurfaceElevated;
+    final defaultBorder = isDark ? AppColors.border : AppColors.lightBorder;
+    final defaultBorderLight = isDark ? AppColors.borderLight : AppColors.lightBorderLight;
 
     BoxDecoration decoration;
 
     switch (variant) {
       case AppCardVariant.standard:
         decoration = BoxDecoration(
-          color: backgroundColor ?? AppColors.surface,
+          color: backgroundColor ?? defaultSurface,
           borderRadius: effectiveBorderRadius,
           border: border != null
               ? Border.fromBorderSide(border!)
-              : Border.all(color: AppColors.border, width: 1),
+              : Border.all(color: defaultBorder, width: 1),
         );
         break;
 
       case AppCardVariant.elevated:
         decoration = BoxDecoration(
-          color: backgroundColor ?? AppColors.surfaceElevated,
+          color: backgroundColor ?? defaultElevated,
           borderRadius: effectiveBorderRadius,
           border: border != null
               ? Border.fromBorderSide(border!)
-              : Border.all(color: AppColors.borderLight, width: 1),
+              : Border.all(color: defaultBorderLight, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.25)
+                  : Colors.black.withValues(alpha: 0.05),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -68,17 +77,18 @@ class AppCard extends StatelessWidget {
           borderRadius: effectiveBorderRadius,
           border: border != null
               ? Border.fromBorderSide(border!)
-              : Border.all(color: AppColors.border, width: 1.5),
+              : Border.all(color: defaultBorder, width: 1.5),
         );
         break;
 
       case AppCardVariant.gradient:
         decoration = BoxDecoration(
-          gradient: AppColors.cardGradient,
+          gradient: isDark ? AppColors.cardGradient : null,
+          color: isDark ? null : AppColors.lightSurface,
           borderRadius: effectiveBorderRadius,
           border: border != null
               ? Border.fromBorderSide(border!)
-              : Border.all(color: AppColors.border, width: 1),
+              : Border.all(color: defaultBorder, width: 1),
         );
         break;
     }

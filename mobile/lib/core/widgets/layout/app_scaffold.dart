@@ -28,14 +28,15 @@ class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: backgroundColor ?? AppColors.background,
+      backgroundColor: backgroundColor ?? theme.scaffoldBackgroundColor,
       appBar: appBar,
       drawer: drawer,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       body: SafeArea(
         top: safeAreaTop,
-        bottom: safeAreaBottom,
+        bottom: safeAreaBottom && (bottomNavigationBar == null),
         child: body,
       ),
       bottomNavigationBar: bottomNavigationBar,

@@ -183,6 +183,22 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     }
   }
 
+  /// Upload user profile avatar image from camera or gallery.
+  Future<bool> uploadAvatar(String filePath) async {
+    state = state.copyWith(status: ProfileStatus.loading);
+    try {
+      final updated = await _repository.uploadAvatar(filePath);
+      state = state.copyWith(status: ProfileStatus.success, user: updated);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        status: ProfileStatus.error,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
   /// Submit KYC verification documents.
   Future<bool> submitVerification({
     required String country,

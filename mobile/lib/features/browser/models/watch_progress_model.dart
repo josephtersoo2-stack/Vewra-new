@@ -7,6 +7,8 @@ class WatchProgressModel {
   final double progressPercentage;
   final bool quizRequired;
   final bool isSatisfied;
+  final String rewardType;
+  final int sessionCoinsEarned;
 
   const WatchProgressModel({
     required this.id,
@@ -16,6 +18,8 @@ class WatchProgressModel {
     required this.progressPercentage,
     this.quizRequired = false,
     this.isSatisfied = false,
+    this.rewardType = 'target',
+    this.sessionCoinsEarned = 0,
   });
 
   factory WatchProgressModel.fromJson(Map<String, dynamic> json) {
@@ -29,6 +33,8 @@ class WatchProgressModel {
           (json['progress_percentage'] as num?)?.toDouble() ?? 0.0,
       quizRequired: json['quiz_required'] as bool? ?? false,
       isSatisfied: json['is_satisfied'] as bool? ?? false,
+      rewardType: json['reward_type']?.toString() ?? 'target',
+      sessionCoinsEarned: (json['session_coins_earned'] as num?)?.toInt() ?? 0,
     );
   }
 }

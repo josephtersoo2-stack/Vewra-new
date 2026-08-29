@@ -22,7 +22,7 @@ class RegisterView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             tokens = AuthService.get_tokens_for_user(user)
-            user_data = UserSerializer(user).data
+            user_data = UserSerializer(user, context={'request': request}).data
             return Response(
                 {
                     'status': 'success',
@@ -52,7 +52,7 @@ class LoginView(APIView):
         if serializer.is_valid():
             user = serializer.validated_data['user']
             tokens = AuthService.get_tokens_for_user(user)
-            user_data = UserSerializer(user).data
+            user_data = UserSerializer(user, context={'request': request}).data
             return Response(
                 {
                     'status': 'success',

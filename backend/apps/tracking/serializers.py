@@ -33,6 +33,7 @@ class WatchHeartbeatSerializer(serializers.Serializer):
     sequence = serializers.IntegerField(min_value=1)
     playback_position = serializers.FloatField(required=False, allow_null=True)
     client_timestamp = serializers.DateTimeField(required=False, allow_null=True)
+    is_google_authenticated = serializers.BooleanField(required=False, default=True)
 
 
 class WatchEventInputSerializer(serializers.Serializer):

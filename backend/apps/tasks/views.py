@@ -142,10 +142,14 @@ class TaskStartView(APIView):
                     'watch_token': raw_token,
                     'required_seconds': session.required_seconds,
                     'credited_watch_seconds': session.credited_watch_seconds,
+                    'progress_percentage': session.progress_percentage,
+                    'is_satisfied': session.is_watch_satisfied,
                     'heartbeat_interval_seconds': 15,
                     'source_url': task.source_url,
                     'channel_name': task.channel_name,
                     'quiz_required': task.quiz_required,
+                    'reward_type': task.reward_type,
+                    'reward_coins': task.reward_coins,
                 }
             }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
@@ -326,3 +330,72 @@ class TaskQuizSubmitView(APIView):
                 'code': 'ATTEMPT_NOT_FOUND',
                 'message': 'Task attempt not found.',
             }, status=status.HTTP_404_NOT_FOUND)
+
+
+class FetchYouTubeMetaView(APIView):
+    """API endpoint to auto-fetch video metadata, channel, HD thumbnail, and keywords from YouTube."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        url = request.data.get('youtube_url', request.data.get('source_url', '')).strip()
+        if not url:
+            return Response({'status': 'error', 'message': 'youtube_url is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            from .services import extract_youtube_metadata
+            meta = extract_youtube_metadata(url)
+            return Response({
+                'status': 'success',
+                'data': meta,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e),
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CreateVideoTaskView(APIView):
+    """API endpoint allowing staff/creators/admin to upload and publish YouTube tasks."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        source_url = data.get('source_url', data.get('youtube_url', '')).strip()
+        if not source_url:
+            return Response({'status': 'error', 'message': 'source_url or youtube_url is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        title = data.get('title', '').strip()
+        channel_name = data.get('channel_name', '').strip()
+        thumbnail_url = data.get('thumbnail_url', '').strip()
+        reward_type = data.get('reward_type', 'target')
+        reward_coins = int(data.get('reward_coins', 10))
+        reward_xp = int(data.get('reward_xp', 25))
+        required_watch_seconds = int(data.get('required_watch_seconds', 60))
+        keywords = data.get('keywords', [])
+        if isinstance(keywords, str):
+            keywords = [k.strip() for k in keywords.split(',') if k.strip()]
+
+        task = Task.objects.create(
+            title=title,
+            channel_name=channel_name,
+            source_url=source_url,
+            thumbnail_url=thumbnail_url,
+            reward_type=reward_type,
+            reward_coins=reward_coins,
+            reward_xp=reward_xp,
+            required_watch_seconds=required_watch_seconds,
+            keywords=keywords,
+            reward_config=data.get('reward_config', {
+                'coins': reward_coins,
+                'target_seconds': required_watch_seconds,
+            }),
+            created_by=request.user,
+        )
+
+        serializer = TaskDetailSerializer(task, context={'request': request})
+        return Response({
+            'status': 'success',
+            'message': 'Video task created and published successfully!',
+            'task': serializer.data,
+        }, status=status.HTTP_201_CREATED)
+

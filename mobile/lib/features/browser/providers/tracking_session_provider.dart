@@ -50,7 +50,8 @@ class TrackingSessionState {
   bool get isPaused => status == TrackingSessionStatus.paused;
   bool get isCompleted => status == TrackingSessionStatus.completed;
   bool get isAwaitingQuiz => status == TrackingSessionStatus.awaitingQuiz;
-  bool get isWatchSatisfied => creditedWatchSeconds >= requiredSeconds;
+  bool get isInterval => session?.rewardType == 'per_time';
+  bool get isWatchSatisfied => !isInterval && creditedWatchSeconds >= requiredSeconds;
 
   TrackingSessionState copyWith({
     TrackingSessionStatus? status,
@@ -84,6 +85,7 @@ class TrackingSessionNotifier extends StateNotifier<TrackingSessionState> {
   final TrackingRepository _repository;
   final Ref _ref;
   Timer? _heartbeatTimer;
+  Timer? _localTickerTimer;
 
   TrackingSessionNotifier(this._repository, this._ref)
       : super(const TrackingSessionState());
@@ -104,13 +106,29 @@ class TrackingSessionNotifier extends StateNotifier<TrackingSessionState> {
       watchToken: watchToken,
     );
     _startTimer();
+    sendHeartbeat();
   }
 
   void _startTimer() {
     _stopTimer();
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (state.isActive && !state.isWatchSatisfied) {
         sendHeartbeat();
+      }
+    });
+
+    _localTickerTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (state.isActive && !state.isWatchSatisfied) {
+        final newSec = state.creditedWatchSeconds + 1;
+        final pct = state.requiredSeconds > 0
+            ? (state.isInterval
+                ? (((newSec % state.requiredSeconds) / state.requiredSeconds) * 100.0).clamp(0.0, 100.0)
+                : ((newSec / state.requiredSeconds) * 100.0).clamp(0.0, 100.0))
+            : 100.0;
+        state = state.copyWith(
+          creditedWatchSeconds: newSec,
+          progressPercentage: pct,
+        );
       }
     });
   }
@@ -118,10 +136,12 @@ class TrackingSessionNotifier extends StateNotifier<TrackingSessionState> {
   void _stopTimer() {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = null;
+    _localTickerTimer?.cancel();
+    _localTickerTimer = null;
   }
 
   /// Sends periodic heartbeat with incremented sequence number.
-  Future<void> sendHeartbeat({double? playbackPosition}) async {
+  Future<void> sendHeartbeat({double? playbackPosition, bool isGoogleAuthenticated = true}) async {
     if (state.session == null || state.watchToken == null) return;
     if (state.status != TrackingSessionStatus.active) return;
 
@@ -133,9 +153,19 @@ class TrackingSessionNotifier extends StateNotifier<TrackingSessionState> {
         sequence: nextSeq,
         playbackPosition: playbackPosition,
         clientTimestamp: DateTime.now(),
+        isGoogleAuthenticated: isGoogleAuthenticated,
+      );
+
+      final updatedSession = state.session?.copyWith(
+        creditedWatchSeconds: progress.creditedWatchSeconds,
+        requiredSeconds: progress.requiredSeconds,
+        progressPercentage: progress.progressPercentage,
+        isSatisfied: progress.isSatisfied,
+        rewardType: progress.rewardType.isNotEmpty ? progress.rewardType : state.session?.rewardType,
       );
 
       state = state.copyWith(
+        session: updatedSession,
         sequence: nextSeq,
         creditedWatchSeconds: progress.creditedWatchSeconds,
         requiredSeconds: progress.requiredSeconds,
@@ -148,13 +178,14 @@ class TrackingSessionNotifier extends StateNotifier<TrackingSessionState> {
   }
 
   /// Plays / Resumes video session.
-  Future<void> play() async {
+  Future<void> play({double? playbackPosition}) async {
     final nextSeq = state.sequence + 1;
     state = state.copyWith(
       status: TrackingSessionStatus.active,
       sequence: nextSeq,
     );
     _startTimer();
+    sendHeartbeat(playbackPosition: playbackPosition);
     if (state.session == null || state.watchToken == null) return;
     try {
       await _repository.sendEvent(
@@ -162,12 +193,13 @@ class TrackingSessionNotifier extends StateNotifier<TrackingSessionState> {
         watchToken: state.watchToken!,
         eventType: 'PLAY',
         sequence: nextSeq,
+        playbackPosition: playbackPosition,
       );
     } catch (_) {}
   }
 
   /// Pauses video session.
-  Future<void> pause() async {
+  Future<void> pause({double? playbackPosition}) async {
     _stopTimer();
     final nextSeq = state.sequence + 1;
     state = state.copyWith(
@@ -181,6 +213,7 @@ class TrackingSessionNotifier extends StateNotifier<TrackingSessionState> {
         watchToken: state.watchToken!,
         eventType: 'PAUSE',
         sequence: nextSeq,
+        playbackPosition: playbackPosition,
       );
     } catch (_) {}
   }

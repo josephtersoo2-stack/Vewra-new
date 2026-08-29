@@ -29,11 +29,13 @@ class TrackingApiService {
     required int sequence,
     double? playbackPosition,
     DateTime? clientTimestamp,
+    bool isGoogleAuthenticated = true,
   }) async {
     final response = await _apiClient.dio.post(
       ApiConstants.trackingHeartbeat(sessionId),
       data: {
         'sequence': sequence,
+        'is_google_authenticated': isGoogleAuthenticated,
         if (playbackPosition != null) 'playback_position': playbackPosition,
         if (clientTimestamp != null)
           'client_timestamp': clientTimestamp.toIso8601String(),

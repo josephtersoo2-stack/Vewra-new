@@ -73,7 +73,17 @@ class AuthApiService {
       throw const FormatException('Unexpected response format from login API');
     } on DioException catch (e) {
       final errorData = e.response?.data;
-      String errorMsg = 'Invalid email or password.';
+      String errorMsg;
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        errorMsg = 'Connection timed out. Please check your network.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        errorMsg = 'Unable to connect to backend server. Please verify backend service.';
+      } else {
+        errorMsg = 'Invalid email or password.';
+      }
+
       if (errorData is Map<String, dynamic>) {
         if (errorData['errors'] is Map) {
           final errMap = errorData['errors'] as Map;

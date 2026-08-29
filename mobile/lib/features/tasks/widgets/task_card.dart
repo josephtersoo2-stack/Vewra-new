@@ -34,11 +34,11 @@ class TaskCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Thumbnail Container with Badges
+          // Thumbnail Container with Badges (Thumbnail Only, No Title)
           Stack(
             children: [
               Container(
-                height: 140,
+                height: 180,
                 width: double.infinity,
                 decoration: const BoxDecoration(
                   color: AppColors.surfaceLight,
@@ -63,15 +63,22 @@ class TaskCard extends StatelessWidget {
                       ),
                     Center(
                       child: Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: AppColors.youtubeRed.withValues(alpha: 0.9),
+                          color: AppColors.youtubeRed.withValues(alpha: 0.92),
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.youtubeRed.withValues(alpha: 0.4),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
                         child: const Icon(
                           Icons.play_arrow_rounded,
                           color: Colors.white,
-                          size: 28,
+                          size: 32,
                         ),
                       ),
                     ),
@@ -83,7 +90,7 @@ class TaskCard extends StatelessWidget {
                 top: 10,
                 left: 10,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.overlayDark,
                     borderRadius: AppConstants.borderRadiusSm,
@@ -114,7 +121,7 @@ class TaskCard extends StatelessWidget {
                       const Icon(Icons.access_time_rounded, size: 12, color: Colors.white),
                       const SizedBox(width: 4),
                       Text(
-                        Formatters.formatDuration(task.durationMinutes),
+                        Formatters.formatSeconds(task.requiredWatchSeconds),
                         style: AppTypography.labelSmall.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -126,93 +133,98 @@ class TaskCard extends StatelessWidget {
               ),
             ],
           ),
-          // Content Info
+          // Action & Reward Row (No title, focus purely on thumbnail recognition & reward)
           Padding(
-            padding: const EdgeInsets.all(AppConstants.space16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.all(AppConstants.space14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  task.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                if (task.isCompleted)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.15),
+                      borderRadius: AppConstants.borderRadiusSm,
+                      border: Border.all(
+                        color: AppColors.success.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          '✓ Completed',
+                          style: AppTypography.labelLarge.copyWith(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.15),
+                      borderRadius: AppConstants.borderRadiusSm,
+                      border: Border.all(
+                        color: AppColors.warning.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.monetization_on_rounded, color: AppColors.coinGold, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          '+${task.rewardCoins} Coins',
+                          style: AppTypography.labelLarge.copyWith(
+                            color: AppColors.coinGold,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '(${Formatters.formatCurrency(task.rewardFiat)})',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppConstants.space6),
-                Row(
-                  children: [
-                    const Icon(Icons.account_circle_outlined, size: 14, color: AppColors.textTertiary),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        task.channelName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                      ),
+                ElevatedButton(
+                  onPressed: onStartTap ?? onTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: task.isCompleted ? AppColors.surfaceLight : AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    minimumSize: const Size(0, 38),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: AppConstants.borderRadiusSm,
                     ),
-                  ],
-                ),
-                const SizedBox(height: AppConstants.space16),
-                // Reward & Action row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.15),
-                        borderRadius: AppConstants.borderRadiusSm,
-                        border: Border.all(
-                          color: AppColors.warning.withValues(alpha: 0.3),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        task.isCompleted ? 'Watch Video' : AppStrings.startTask,
+                        style: AppTypography.labelMedium.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.monetization_on_rounded, color: AppColors.coinGold, size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            '+${task.rewardCoins} Coins',
-                            style: AppTypography.labelMedium.copyWith(
-                              color: AppColors.coinGold,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '(${Formatters.formatCurrency(task.rewardFiat)})',
-                            style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 4),
+                      Icon(
+                        task.isCompleted ? Icons.play_arrow_rounded : Icons.arrow_forward_rounded,
+                        size: 16,
+                        color: Colors.white,
                       ),
-                    ),
-                    ElevatedButton(
-                      onPressed: onStartTap ?? onTap,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        minimumSize: const Size(0, 36),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: AppConstants.borderRadiusSm,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(AppStrings.startTask, style: AppTypography.labelSmall.copyWith(color: Colors.white)),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_forward_rounded, size: 14, color: Colors.white),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -224,7 +236,7 @@ class TaskCard extends StatelessWidget {
 
   Widget _buildHorizontalCompact(BuildContext context) {
     return Container(
-      width: 260,
+      width: 240,
       margin: const EdgeInsets.only(right: AppConstants.space12),
       child: AppCard(
         onTap: onTap,
@@ -233,18 +245,31 @@ class TaskCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              height: 100,
-              decoration: BoxDecoration(
+              height: 130,
+              decoration: const BoxDecoration(
                 color: AppColors.surfaceLight,
-                borderRadius: const BorderRadius.vertical(
+                borderRadius: BorderRadius.vertical(
                   top: Radius.circular(AppConstants.radiusLg),
                 ),
               ),
               child: Stack(
+                fit: StackFit.expand,
                 children: [
+                  if (task.thumbnailUrl.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(AppConstants.radiusLg),
+                      ),
+                      child: Image.network(
+                        task.thumbnailUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const SizedBox.shrink(),
+                      ),
+                    ),
                   Center(
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: AppColors.youtubeRed.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
@@ -252,7 +277,7 @@ class TaskCard extends StatelessWidget {
                       child: const Icon(
                         Icons.play_arrow_rounded,
                         color: Colors.white,
-                        size: 20,
+                        size: 24,
                       ),
                     ),
                   ),
@@ -266,7 +291,7 @@ class TaskCard extends StatelessWidget {
                         borderRadius: AppConstants.borderRadiusSm,
                       ),
                       child: Text(
-                        Formatters.formatDuration(task.durationMinutes),
+                        Formatters.formatSeconds(task.requiredWatchSeconds),
                         style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -275,41 +300,18 @@ class TaskCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(AppConstants.space12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.symmetric(horizontal: AppConstants.space12, vertical: AppConstants.space10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    task.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.titleSmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                    '+${task.rewardCoins} Coins',
+                    style: AppTypography.labelMedium.copyWith(
+                      color: AppColors.coinGold,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          task.channelName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '+${task.rewardCoins} Coins',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.coinGold,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.textSecondary),
                 ],
               ),
             ),

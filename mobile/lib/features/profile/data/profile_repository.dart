@@ -62,6 +62,13 @@ class ProfileRepository {
     return updated;
   }
 
+  /// Upload avatar image.
+  Future<UserModel> uploadAvatar(String filePath) async {
+    final updated = await _apiService.uploadAvatar(filePath);
+    _cachedProfile = updated;
+    return updated;
+  }
+
   /// Fetch user statistics.
   Future<UserStatisticsModel> fetchStatistics() async {
     final stats = await _apiService.fetchStatistics();

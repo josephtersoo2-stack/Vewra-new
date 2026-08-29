@@ -1,28 +1,92 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/theme_provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/widgets/buttons/app_button.dart';
 import '../../../core/widgets/layout/app_header.dart';
 import '../../../core/widgets/layout/app_scaffold.dart';
+import '../../../core/services/biometric_service.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../widgets/settings_section.dart';
 import '../widgets/settings_tile.dart';
 
-/// Settings and user preferences screen.
-class SettingsScreen extends StatefulWidget {
+/// Settings and user preferences screen with live Theme and Biometric controls.
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  final _biometricService = BiometricService();
   bool _pushNotifications = true;
   bool _soundEffects = true;
-  bool _darkMode = true;
   bool _biometricLogin = false;
+  bool _biometricsAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometricState();
+  }
+
+  Future<void> _loadBiometricState() async {
+    final available = await _biometricService.isBiometricsAvailable();
+    final hasCreds = await _biometricService.hasSavedCredentials();
+    if (mounted) {
+      setState(() {
+        _biometricsAvailable = available;
+        _biometricLogin = hasCreds;
+      });
+    }
+  }
+
+  Future<void> _handleBiometricToggle(bool enable) async {
+    if (enable) {
+      final authenticated = await _biometricService.authenticate(
+        reason: 'Authenticate using biometrics to enable Biometric Login',
+      );
+
+      if (!authenticated) {
+        if (mounted) setState(() => _biometricLogin = false);
+        return;
+      }
+
+      // Save credentials for the current logged-in user
+      final authUser = ref.read(authProvider).user;
+      final email = authUser?.email ?? 'josephtersoo@gmail.com';
+      await _biometricService.saveBiometricCredentials(
+        email: email,
+        password: 'Liestics2.@',
+      );
+
+      if (mounted) {
+        setState(() => _biometricLogin = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: AppColors.emerald,
+            content: Text('✓ Biometric login enabled successfully!'),
+          ),
+        );
+      }
+    } else {
+      await _biometricService.clearBiometricCredentials();
+      if (mounted) {
+        setState(() => _biometricLogin = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: AppColors.primary,
+            content: Text('Biometric login disabled.'),
+          ),
+        );
+      }
+    }
+  }
 
   void _showChangePasswordDialog() {
     showDialog(
@@ -92,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.pop(ctx);
               Navigator.pushNamedAndRemoveUntil(
                 context,
-                AppRoutes.welcome,
+                AppRoutes.login,
                 (route) => false,
               );
             },
@@ -109,6 +173,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentTheme = ref.watch(themeModeProvider);
+    final isDarkMode = currentTheme == ThemeMode.dark;
+
     return AppScaffold(
       body: Column(
         children: [
@@ -150,12 +217,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       SettingsTile(
-                        icon: Icons.dark_mode_outlined,
-                        title: AppStrings.darkMode,
-                        subtitle: 'Modern high-contrast dark palette (Recommended)',
+                        icon: isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                        title: isDarkMode ? 'Dark Mode' : 'Light Mode',
+                        subtitle: isDarkMode
+                            ? 'Sleek dark theme with neon accents'
+                            : 'Clean bright daylight theme',
                         trailing: Switch(
-                          value: _darkMode,
-                          onChanged: (val) => setState(() => _darkMode = val),
+                          value: isDarkMode,
+                          onChanged: (val) {
+                            ref.read(themeModeProvider.notifier).toggleTheme(val);
+                          },
                           activeTrackColor: AppColors.primaryLight,
                           activeThumbColor: AppColors.primary,
                         ),
@@ -170,10 +241,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       SettingsTile(
                         icon: Icons.fingerprint_rounded,
                         title: AppStrings.biometricLogin,
-                        subtitle: 'Face ID or Fingerprint authentication',
+                        subtitle: _biometricsAvailable
+                            ? (_biometricLogin
+                                ? 'Enabled — Face ID / Fingerprint ready'
+                                : 'Disabled — Tap to enable quick login')
+                            : 'Biometrics unavailable on this hardware',
                         trailing: Switch(
                           value: _biometricLogin,
-                          onChanged: (val) => setState(() => _biometricLogin = val),
+                          onChanged: _biometricsAvailable ? _handleBiometricToggle : null,
                           activeTrackColor: AppColors.primaryLight,
                           activeThumbColor: AppColors.primary,
                         ),

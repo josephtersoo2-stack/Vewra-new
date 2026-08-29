@@ -5,13 +5,32 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Background & Surface
+  // Dark Background & Surface
   static const Color background = Color(0xFF0D0F17);
   static const Color backgroundSecondary = Color(0xFF131722);
   static const Color surface = Color(0xFF1A1F2C);
   static const Color surfaceElevated = Color(0xFF22283A);
   static const Color surfaceLight = Color(0xFF2D344B);
   static const Color card = Color(0xFF1E2333);
+
+  // Light Background & Surface
+  static const Color lightBackground = Color(0xFFF8FAFC);
+  static const Color lightBackgroundSecondary = Color(0xFFF1F5F9);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightSurfaceElevated = Color(0xFFFFFFFF);
+  static const Color lightSurfaceLight = Color(0xFFF8FAFC);
+  static const Color lightCard = Color(0xFFFFFFFF);
+
+  // Light Text Colors
+  static const Color lightTextPrimary = Color(0xFF0F172A);
+  static const Color lightTextSecondary = Color(0xFF64748B);
+  static const Color lightTextTertiary = Color(0xFF94A3B8);
+  static const Color lightTextMuted = Color(0xFFCBD5E1);
+
+  // Light Borders & Dividers
+  static const Color lightBorder = Color(0xFFE2E8F0);
+  static const Color lightBorderLight = Color(0xFFCBD5E1);
+  static const Color lightDivider = Color(0xFFE2E8F0);
 
   // Brand Accents
   static const Color primary = Color(0xFF6366F1); // Electric Indigo

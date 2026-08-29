@@ -62,6 +62,8 @@ class WatchSession(models.Model):
     class Meta:
         db_table = 'vewra_watch_sessions'
         ordering = ['-started_at']
+        verbose_name = 'Watch Session'
+        verbose_name_plural = 'Watch Sessions'
         indexes = [
             models.Index(fields=['user', 'status']),
             models.Index(fields=['session_token_hash']),
@@ -72,12 +74,23 @@ class WatchSession(models.Model):
 
     @property
     def progress_percentage(self) -> float:
-        if self.required_seconds <= 0:
+        if not self.task or self.task.reward_type != 'per_time':
+            if self.required_seconds <= 0:
+                return 100.0
+            return min(100.0, round((self.credited_watch_seconds / self.required_seconds) * 100.0, 2))
+        cfg = self.task.reward_config if isinstance(self.task.reward_config, dict) else {}
+        interval = int(cfg.get('interval_seconds') or self.task.required_watch_seconds or 60)
+        if interval <= 0:
             return 100.0
-        return min(100.0, round((self.credited_watch_seconds / self.required_seconds) * 100.0, 2))
+        cycle_sec = self.credited_watch_seconds % interval
+        return round((cycle_sec / interval) * 100.0, 2)
 
     @property
     def is_watch_satisfied(self) -> bool:
+        if self.task and self.task.reward_type == 'per_time':
+            cfg = self.task.reward_config if isinstance(self.task.reward_config, dict) else {}
+            interval = int(cfg.get('interval_seconds') or self.task.required_watch_seconds or 60)
+            return self.credited_watch_seconds >= interval
         return self.credited_watch_seconds >= self.required_seconds
 
 
@@ -98,9 +111,9 @@ class WatchEvent(models.Model):
     class Meta:
         db_table = 'vewra_watch_events'
         ordering = ['server_timestamp', 'sequence']
-        constraints = [
-            models.UniqueConstraint(fields=['session', 'sequence'], name='unique_session_sequence')
-        ]
+        verbose_name = 'Watch Heartbeat Event'
+        verbose_name_plural = 'Watch Heartbeat Events'
+        constraints = []
 
     def __str__(self):
         return f"Event #{self.sequence} {self.event_type} on Session {self.session_id}"

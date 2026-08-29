@@ -77,6 +77,7 @@ class WatchHeartbeatView(APIView):
                 sequence=serializer.validated_data['sequence'],
                 playback_position=serializer.validated_data.get('playback_position'),
                 client_timestamp=serializer.validated_data.get('client_timestamp'),
+                is_google_authenticated=serializer.validated_data.get('is_google_authenticated', True),
             )
             return Response(result, status=status.HTTP_200_OK)
         except ValidationError as e:

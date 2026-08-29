@@ -13,6 +13,8 @@ class WatchSessionModel {
   final int lastSequence;
   final String? watchToken;
   final bool quizRequired;
+  final String rewardType;
+  final int rewardCoins;
 
   const WatchSessionModel({
     required this.id,
@@ -28,6 +30,8 @@ class WatchSessionModel {
     this.lastSequence = 1,
     this.watchToken,
     this.quizRequired = false,
+    this.rewardType = 'target',
+    this.rewardCoins = 0,
   });
 
   factory WatchSessionModel.fromJson(Map<String, dynamic> json) {
@@ -49,6 +53,8 @@ class WatchSessionModel {
       lastSequence: (json['last_sequence'] as num?)?.toInt() ?? 1,
       watchToken: json['watch_token']?.toString(),
       quizRequired: json['quiz_required'] as bool? ?? false,
+      rewardType: json['reward_type']?.toString() ?? 'target',
+      rewardCoins: (json['reward_coins'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -66,6 +72,8 @@ class WatchSessionModel {
     int? lastSequence,
     String? watchToken,
     bool? quizRequired,
+    String? rewardType,
+    int? rewardCoins,
   }) {
     return WatchSessionModel(
       id: id ?? this.id,
@@ -81,6 +89,8 @@ class WatchSessionModel {
       lastSequence: lastSequence ?? this.lastSequence,
       watchToken: watchToken ?? this.watchToken,
       quizRequired: quizRequired ?? this.quizRequired,
+      rewardType: rewardType ?? this.rewardType,
+      rewardCoins: rewardCoins ?? this.rewardCoins,
     );
   }
 }

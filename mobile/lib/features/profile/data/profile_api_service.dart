@@ -71,6 +71,32 @@ class ProfileApiService {
     }
   }
 
+  /// Upload user profile avatar image.
+  Future<UserModel> uploadAvatar(String filePath) async {
+    try {
+      final fileName = filePath.split(RegExp(r'[\\/]')).last;
+      final formData = FormData.fromMap({
+        'avatar': await MultipartFile.fromFile(filePath, filename: fileName),
+      });
+
+      final response = await _apiClient.patch(
+        ApiConstants.userProfileUpdate,
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+
+      if (response.data is Map<String, dynamic>) {
+        final data = response.data as Map<String, dynamic>;
+        if (data['user'] is Map<String, dynamic>) {
+          return UserModel.fromJson(data['user'] as Map<String, dynamic>);
+        }
+      }
+      throw const FormatException('Invalid avatar upload response');
+    } on DioException catch (e) {
+      throw Exception(e.message ?? 'Failed to upload profile avatar');
+    }
+  }
+
   /// Fetch user statistics.
   Future<UserStatisticsModel> fetchStatistics() async {
     try {

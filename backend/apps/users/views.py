@@ -17,7 +17,7 @@ class UserProfileView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, *args, **kwargs):
-        serializer = UserSerializer(request.user)
+        serializer = UserSerializer(request.user, context={'request': request})
         return Response(
             {
                 'status': 'success',
@@ -45,7 +45,7 @@ class UserProfileUpdateView(APIView):
                 {
                     'status': 'success',
                     'message': 'Profile updated successfully.',
-                    'user': UserSerializer(user).data,
+                    'user': UserSerializer(user, context={'request': request}).data,
                 },
                 status=status.HTTP_200_OK
             )

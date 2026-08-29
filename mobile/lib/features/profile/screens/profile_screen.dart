@@ -15,10 +15,23 @@ import 'edit_profile_screen.dart';
 import 'subscription_screen.dart';
 
 /// User Profile Screen with level progress, verification status, trust score, and account management.
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
-  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+  @override
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(profileProvider.notifier).loadFullProfile();
+    });
+  }
+
+  void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -44,7 +57,7 @@ class ProfileScreen extends ConsumerWidget {
               if (context.mounted) {
                 Navigator.pushNamedAndRemoveUntil(
                   context,
-                  AppRoutes.welcome,
+                  AppRoutes.login,
                   (route) => false,
                 );
               }
@@ -61,10 +74,11 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final authUser = ref.watch(authProvider).user;
     final profileState = ref.watch(profileProvider);
     final user = profileState.user ??
-        ref.watch(authProvider).user ??
+        authUser ??
         const UserModel(
           id: 'usr_default',
           username: 'alex_developer',
@@ -226,7 +240,7 @@ class ProfileScreen extends ConsumerWidget {
             iconColor: AppColors.error,
             title: AppStrings.logout,
             subtitle: 'Sign out of your account on this device',
-            onTap: () => _showLogoutDialog(context, ref),
+            onTap: () => _showLogoutDialog(context),
           ),
           const SizedBox(height: AppConstants.space32),
         ],

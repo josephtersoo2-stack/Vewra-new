@@ -39,12 +39,14 @@ class TaskEligibilityRequirements {
 
 class TaskEligibilityModel {
   final bool eligible;
+  final bool alreadyCompleted;
   final List<String> reasons;
   final TaskEligibilityRequirements requirements;
   final String? activeAttemptId;
 
   const TaskEligibilityModel({
     required this.eligible,
+    this.alreadyCompleted = false,
     this.reasons = const [],
     this.requirements = const TaskEligibilityRequirements(),
     this.activeAttemptId,
@@ -53,6 +55,7 @@ class TaskEligibilityModel {
   factory TaskEligibilityModel.fromJson(Map<String, dynamic> json) {
     return TaskEligibilityModel(
       eligible: json['eligible'] as bool? ?? false,
+      alreadyCompleted: json['already_completed'] as bool? ?? false,
       reasons: (json['reasons'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??

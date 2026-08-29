@@ -27,8 +27,12 @@ class AppIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveBg = backgroundColor ?? AppColors.surfaceElevated;
-    final effectiveIconColor = iconColor ?? AppColors.textPrimary;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final effectiveBg = backgroundColor ?? (isDark ? AppColors.surfaceElevated : AppColors.lightSurface);
+    final effectiveIconColor = iconColor ?? (isDark ? AppColors.textPrimary : AppColors.lightTextPrimary);
+    final effectiveBorder = isDark ? AppColors.border : AppColors.lightBorder;
 
     Widget button = Container(
       width: size,
@@ -37,7 +41,7 @@ class AppIconButton extends StatelessWidget {
         color: effectiveBg,
         shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
         borderRadius: isCircle ? null : AppConstants.borderRadiusMd,
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(color: effectiveBorder, width: 1),
       ),
       child: Material(
         color: Colors.transparent,

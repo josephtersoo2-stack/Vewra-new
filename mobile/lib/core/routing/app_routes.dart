@@ -21,6 +21,8 @@ class AppRoutes {
   static const String transactionHistory = '/transaction-history';
   static const String withdraw = '/withdraw';
   static const String quiz = '/quiz';
+  static const String quizResult = '/quiz/result';
+  static const String taskHistory = '/tasks/history';
   static const String profile = '/profile';
   static const String settings = '/settings';
 }

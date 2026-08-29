@@ -14,6 +14,7 @@ class MockTrackingRepository extends TrackingRepository {
     required int sequence,
     double? playbackPosition,
     DateTime? clientTimestamp,
+    bool isGoogleAuthenticated = true,
   }) async {
     return WatchProgressModel(
       id: sessionId,

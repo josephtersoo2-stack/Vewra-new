@@ -61,6 +61,8 @@ class ApiConstants {
 
   // Phase 5: Task Catalog & Attempts Endpoints
   static const String tasks = '/tasks/';
+  static const String taskFetchMeta = '/tasks/fetch-meta/';
+  static const String taskCreate = '/tasks/create/';
   static String taskDetails(String id) => '/tasks/$id/';
   static String taskEligibility(String id) => '/tasks/$id/eligibility/';
   static String taskStart(String id) => '/tasks/$id/start/';

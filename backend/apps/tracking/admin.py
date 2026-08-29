@@ -5,10 +5,13 @@ class WatchEventInline(admin.TabularInline):
     model = WatchEvent
     extra = 0
     readonly_fields = ('sequence', 'event_type', 'client_timestamp', 'server_timestamp', 'playback_position', 'metadata')
-    can_delete = False
+    can_delete = True
 
     def has_add_permission(self, request, obj=None):
         return False
+
+    def has_delete_permission(self, request, obj=None):
+        return True
 
 
 @admin.register(WatchSession)
@@ -37,6 +40,10 @@ class WatchSessionAdmin(admin.ModelAdmin):
         'last_heartbeat_at',
     )
     inlines = [WatchEventInline]
+    actions = ['delete_selected']
+
+    def has_delete_permission(self, request, obj=None):
+        return True
 
 
 @admin.register(WatchEvent)
@@ -45,9 +52,11 @@ class WatchEventAdmin(admin.ModelAdmin):
     list_filter = ('event_type',)
     search_fields = ('session__id', 'event_type')
     readonly_fields = ('id', 'session', 'event_type', 'sequence', 'client_timestamp', 'server_timestamp', 'playback_position', 'metadata')
+    actions = ['delete_selected']
 
     def has_add_permission(self, request):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return True
+

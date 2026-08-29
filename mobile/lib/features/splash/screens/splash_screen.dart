@@ -44,9 +44,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _animController.forward();
 
     if (widget.autoNavigate) {
-      _navTimer = Timer(const Duration(milliseconds: 2200), () {
+      _navTimer = Timer(const Duration(milliseconds: 1800), () {
         if (mounted) {
-          Navigator.pushReplacementNamed(context, AppRoutes.welcome);
+          // Bypasses welcome onboarding and takes user straight to Login
+          Navigator.pushReplacementNamed(context, AppRoutes.login);
         }
       });
     }
