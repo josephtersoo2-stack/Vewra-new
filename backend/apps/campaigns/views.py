@@ -11,15 +11,19 @@ from .serializers import (
 )
 from .services import CampaignService
 from .selectors import list_campaigns, get_campaign_by_id
-from .permissions import IsCampaignOwner, IsAdminCampaignManager
+from .permissions import IsCampaignOwner, IsAdminCampaignManager, CanCreateCampaign
 
 
 class CampaignListCreateView(views.APIView):
     """
     GET /api/v1/campaigns/ - List campaigns with filtering.
-    POST /api/v1/campaigns/ - Create a new campaign in DRAFT status.
+    POST /api/v1/campaigns/ - Create a new campaign in DRAFT status (Advertiser / Admin only).
     """
-    permission_classes = [permissions.IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [permissions.IsAuthenticated(), CanCreateCampaign()]
+        return [permissions.IsAuthenticated()]
 
     def get(self, request):
         status_filter = request.query_params.get("status")

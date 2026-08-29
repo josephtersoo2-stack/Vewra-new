@@ -2,6 +2,38 @@ from rest_framework import permissions
 from .models import CampaignStatus
 
 
+def is_advertiser_capable(user) -> bool:
+    """
+    Clean extension hook evaluating whether a user account has advertiser capability.
+    Allows administrators, staff, users with role='advertiser', or users with is_advertiser=True.
+    Ordinary users without advertiser credentials are not authorized to create campaigns.
+    """
+    if not (user and user.is_authenticated):
+        return False
+    if user.is_staff or getattr(user, 'is_superuser', False) or getattr(user, 'role', '') == 'admin':
+        return True
+    if getattr(user, 'role', '') == 'advertiser':
+        return True
+    if getattr(user, 'is_advertiser', False):
+        return True
+    # Future extension point: advertiser verification / KYC check
+    profile = getattr(user, 'profile', None)
+    if profile and (getattr(profile, 'is_advertiser', False) or getattr(profile, 'role', '') == 'advertiser'):
+        return True
+    return False
+
+
+class CanCreateCampaign(permissions.BasePermission):
+    """
+    Permission gate allowing only advertiser-capable accounts, staff, or admins
+    to create new campaigns. Ordinary users are blocked.
+    """
+    message = "Only verified advertiser accounts or administrators can create campaigns."
+
+    def has_permission(self, request, view):
+        return is_advertiser_capable(request.user)
+
+
 class IsCampaignOwner(permissions.BasePermission):
     """
     Object-level permission allowing only the owner of a campaign to view

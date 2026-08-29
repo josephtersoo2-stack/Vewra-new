@@ -10,24 +10,40 @@ User = get_user_model()
 
 class CampaignAPITest(APITestCase):
     def setUp(self):
+        # Advertiser-capable user (not admin/staff)
         self.owner = User.objects.create_user(
             email="owner@test.com",
             username="owner_api",
             password="Password123!",
         )
-        self.other_user = User.objects.create_user(
-            email="other@test.com",
-            username="other_api",
+        self.owner.role = "advertiser"
+        self.owner.save()
+        # Ordinary earner user
+        self.ordinary_user = User.objects.create_user(
+            email="ordinary@test.com",
+            username="ordinary_api",
             password="Password123!",
         )
+        # Platform Admin
         self.admin = User.objects.create_superuser(
             email="admin@test.com",
             username="admin_api",
             password="Password123!",
         )
         self.list_create_url = reverse("campaigns:campaign-list")
+        self.create_url = reverse("campaigns:campaign-create")
 
-    def test_create_campaign_api(self):
+    def test_ordinary_user_cannot_create_campaign_api(self):
+        self.client.force_authenticate(user=self.ordinary_user)
+        payload = {
+            "title": "Unauthorized User Promo",
+            "campaign_type": CampaignType.ADVERTISEMENT,
+            "budget": "500.00",
+        }
+        response = self.client.post(self.create_url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_campaign_api_as_advertiser(self):
         self.client.force_authenticate(user=self.owner)
         payload = {
             "title": "Samsung S24 Promo",
@@ -50,7 +66,7 @@ class CampaignAPITest(APITestCase):
             status=CampaignStatus.DRAFT,
         )
         Campaign.objects.create(
-            owner=self.other_user,
+            owner=self.ordinary_user,
             title="Active Ad",
             campaign_type=CampaignType.ADVERTISEMENT,
             status=CampaignStatus.ACTIVE,

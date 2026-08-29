@@ -10,21 +10,34 @@ User = get_user_model()
 
 class CampaignServiceTest(TestCase):
     def setUp(self):
+        # Advertiser-capable user (not admin/staff)
         self.owner = User.objects.create_user(
             email="owner@example.com",
             username="owner1",
             password="Password123!",
         )
-        self.other_user = User.objects.create_user(
-            email="other@example.com",
-            username="other1",
+        self.owner.role = "advertiser"
+        self.owner.save()
+        # Ordinary user without advertiser capabilities
+        self.ordinary_user = User.objects.create_user(
+            email="ordinary@example.com",
+            username="ordinary1",
             password="Password123!",
         )
+        # Superuser / Admin
         self.admin = User.objects.create_superuser(
             email="admin@example.com",
             username="admin1",
             password="Password123!",
         )
+
+    def test_ordinary_user_cannot_create_campaign(self):
+        with self.assertRaises(PermissionDenied):
+            CampaignService.create_campaign(
+                owner=self.ordinary_user,
+                campaign_type=CampaignType.ADVERTISEMENT,
+                title="Unauthorized Campaign",
+            )
 
     def test_create_campaign_service(self):
         campaign = CampaignService.create_campaign(
@@ -46,7 +59,7 @@ class CampaignServiceTest(TestCase):
         )
         # Non-owner fails
         with self.assertRaises(PermissionDenied):
-            CampaignService.submit_for_review(campaign, self.other_user)
+            CampaignService.submit_for_review(campaign, self.ordinary_user)
 
         # Owner succeeds
         updated = CampaignService.submit_for_review(campaign, self.owner)

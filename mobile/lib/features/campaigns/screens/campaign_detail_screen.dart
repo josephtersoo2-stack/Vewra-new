@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/routing/app_routes.dart';
 import '../../../core/widgets/layout/app_scaffold.dart';
 import '../../../core/widgets/layout/app_header.dart';
 import '../../../core/widgets/cards/app_card.dart';
 import '../../../core/widgets/buttons/app_button.dart';
 import '../models/campaign_model.dart';
-import '../providers/campaign_provider.dart';
 
 class CampaignDetailScreen extends ConsumerStatefulWidget {
   final CampaignModel? initialCampaign;
@@ -26,7 +26,6 @@ class CampaignDetailScreen extends ConsumerStatefulWidget {
 
 class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
   late CampaignModel _campaign;
-  bool _isLoadingAction = false;
 
   @override
   void initState() {
@@ -36,7 +35,7 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
           id: widget.campaignId ?? '',
           title: 'Loading Campaign...',
           campaignType: 'TASK',
-          status: 'DRAFT',
+          status: 'ACTIVE',
           budget: 0.0,
         );
   }
@@ -59,58 +58,14 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
     }
   }
 
-  Future<void> _handleSubmitForReview() async {
-    setState(() => _isLoadingAction = true);
-    final success = await ref
-        .read(campaignListProvider.notifier)
-        .submitForReview(_campaign.id);
-    if (!mounted) return;
-    setState(() => _isLoadingAction = false);
-
-    if (success) {
-      setState(() {
-        _campaign = _campaign.copyWith(
-          status: 'PENDING_REVIEW',
-          statusDisplay: 'Pending Review',
-        );
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✓ Campaign submitted for administrative review!'),
-          backgroundColor: AppColors.emerald,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to submit campaign for review.'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    }
-  }
-
-  Future<void> _handlePause() async {
-    setState(() => _isLoadingAction = true);
-    final success =
-        await ref.read(campaignListProvider.notifier).pauseCampaign(_campaign.id);
-    if (!mounted) return;
-    setState(() => _isLoadingAction = false);
-
-    if (success) {
-      setState(() {
-        _campaign = _campaign.copyWith(
-          status: 'PAUSED',
-          statusDisplay: 'Paused',
-        );
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Campaign has been paused.'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
-    }
+  void _handleParticipate() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('✓ You are now participating in this campaign! Complete tasks to earn rewards.'),
+        backgroundColor: AppColors.emerald,
+      ),
+    );
+    Navigator.pushNamed(context, AppRoutes.tasks);
   }
 
   @override
@@ -122,9 +77,9 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AppHeader(
+            const AppHeader(
               title: 'Campaign Details',
-              subtitle: 'Unified Campaign Specification',
+              subtitle: 'Earn & Promotional Campaign',
               showBackButton: true,
             ),
             Padding(
@@ -199,14 +154,14 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
 
                   const SizedBox(height: AppConstants.space16),
 
-                  // Metrics & Financial Breakdown
+                  // Metrics & Timeline
                   AppCard(
                     padding: const EdgeInsets.all(AppConstants.space20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Budget & Timeline',
+                          'Campaign Overview',
                           style: AppTypography.headlineSmall.copyWith(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -217,17 +172,17 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
                           children: [
                             Expanded(
                               child: _buildMetricTile(
-                                'Allocated Budget',
+                                'Campaign Pool',
                                 '\$${_campaign.budget.toStringAsFixed(2)}',
-                                Icons.attach_money_rounded,
+                                Icons.account_balance_wallet_outlined,
                               ),
                             ),
                             const SizedBox(width: AppConstants.space12),
                             Expanded(
                               child: _buildMetricTile(
-                                'Campaign Status',
+                                'Status',
                                 _campaign.statusDisplay,
-                                Icons.info_outline_rounded,
+                                Icons.check_circle_outline_rounded,
                               ),
                             ),
                           ],
@@ -240,49 +195,37 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
                           _buildInfoRow('Start Date', _campaign.startDate!),
                         if (_campaign.endDate != null)
                           _buildInfoRow('End Date', _campaign.endDate!),
-                        if (_campaign.createdAt.isNotEmpty)
-                          _buildInfoRow('Created At', _campaign.createdAt),
                       ],
                     ),
                   ),
 
                   const SizedBox(height: AppConstants.space24),
 
-                  // Action Buttons
-                  if (_campaign.isDraft) ...[
+                  // Participate Action Button for Earn Users
+                  if (_campaign.isActive) ...[
                     AppButton(
-                      text: 'Submit for Admin Review',
-                      isLoading: _isLoadingAction,
-                      onPressed: _handleSubmitForReview,
+                      text: 'Participate in Campaign',
+                      prefixIcon: const Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 20),
+                      onPressed: _handleParticipate,
                     ),
-                  ] else if (_campaign.isActive) ...[
-                    AppButton(
-                      text: 'Pause Campaign',
-                      variant: AppButtonVariant.outlined,
-                      isLoading: _isLoadingAction,
-                      onPressed: _handlePause,
-                    ),
-                  ] else if (_campaign.isPendingReview) ...[
+                  ] else ...[
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(AppConstants.space16),
                       decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.1),
-                        borderRadius:
-                            BorderRadius.circular(AppConstants.radiusMd),
-                        border: Border.all(
-                            color: AppColors.warning.withValues(alpha: 0.3)),
+                        color: AppColors.surfaceElevated,
+                        borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+                        border: Border.all(color: AppColors.border),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.access_time_rounded,
-                              color: AppColors.warning),
+                          const Icon(Icons.info_outline_rounded, color: AppColors.textSecondary),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'This campaign is under administrative review. Once approved, it will become Active.',
+                              'This campaign is ${_campaign.statusDisplay.toLowerCase()}. Participation is currently closed.',
                               style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.warning,
+                                color: AppColors.textSecondary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

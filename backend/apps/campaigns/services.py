@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.utils import timezone
 from .models import Campaign, CampaignStatus, CampaignType
+from .permissions import is_advertiser_capable
 
 
 class CampaignService:
@@ -22,7 +23,11 @@ class CampaignService:
     ) -> Campaign:
         """
         Creates a new Campaign in default DRAFT status.
+        Requires owner to have advertiser capability or administrative status.
         """
+        if not is_advertiser_capable(owner):
+            raise PermissionDenied("Only verified advertiser accounts or administrators can create campaigns.")
+
         if not title or not title.strip():
             raise ValidationError({"title": "Campaign title cannot be empty."})
 
