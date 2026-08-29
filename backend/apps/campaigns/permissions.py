@@ -1,5 +1,5 @@
 from rest_framework import permissions
-from .models import CampaignStatus
+from .models import CampaignStatus, MediaStatus
 
 
 def is_advertiser_capable(user) -> bool:
@@ -81,3 +81,30 @@ class IsAdminCampaignManager(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         return self.has_permission(request, view)
+
+
+class IsCampaignMediaOwnerOrAdmin(permissions.BasePermission):
+    """
+    Object-level permission ensuring:
+    - Admins and staff have full access.
+    - Campaign owner can view, update, and soft-delete (disable) their own campaign media.
+    - Another advertiser or normal user CANNOT access, update, or disable this media.
+    """
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated)
+
+    def has_object_permission(self, request, view, obj):
+        # obj is CampaignMedia
+        if request.user.is_staff or getattr(request.user, 'role', '') == 'admin':
+            return True
+
+        # Check campaign ownership
+        if obj.campaign.owner == request.user:
+            return True
+
+        # Read-only access for public active campaign assets
+        if request.method in permissions.SAFE_METHODS and obj.campaign.status == CampaignStatus.ACTIVE and obj.status == MediaStatus.READY:
+            return True
+
+        return False

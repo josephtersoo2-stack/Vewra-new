@@ -6,6 +6,9 @@ from .views import (
     CampaignApproveView,
     CampaignRejectView,
     CampaignPauseView,
+    CampaignMediaListCreateView,
+    CampaignMediaDetailView,
+    CampaignMediaRestoreView,
 )
 
 app_name = "campaigns"
@@ -18,4 +21,9 @@ urlpatterns = [
     path("<uuid:pk>/approve/", CampaignApproveView.as_view(), name="campaign-approve"),
     path("<uuid:pk>/reject/", CampaignRejectView.as_view(), name="campaign-reject"),
     path("<uuid:pk>/pause/", CampaignPauseView.as_view(), name="campaign-pause"),
+    # Media endpoints
+    path("<uuid:campaign_id>/media/", CampaignMediaListCreateView.as_view(), name="campaign-media-list"),
+    path("<uuid:campaign_id>/media/upload/", CampaignMediaListCreateView.as_view(), name="campaign-media-upload"),
+    path("media/<uuid:pk>/", CampaignMediaDetailView.as_view(), name="campaign-media-detail"),
+    path("media/<uuid:pk>/restore/", CampaignMediaRestoreView.as_view(), name="campaign-media-restore"),
 ]

@@ -35,7 +35,6 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final profileState = ref.watch(profileProvider);
-    final walletState = ref.watch(walletProvider);
     final taskFeedState = ref.watch(taskFeedProvider);
 
     final user = profileState.user ?? authState.user ?? DummyDataService.currentUser;

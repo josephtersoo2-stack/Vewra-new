@@ -214,5 +214,29 @@ export const adminApi = {
     const res = await apiClient.post(`/campaigns/${id}/pause/`);
     return res.data;
   },
+
+  // Campaign Media Management (Phase 5.5 Step 2)
+  getCampaignMedia: async (campaignId, params = {}) => {
+    const res = await apiClient.get(`/campaigns/${campaignId}/media/`, { params });
+    return res.data;
+  },
+  uploadCampaignMedia: async (campaignId, formData) => {
+    const res = await apiClient.post(`/campaigns/${campaignId}/media/upload/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+  updateCampaignMedia: async (id, data) => {
+    const res = await apiClient.patch(`/campaign-media/${id}/`, data);
+    return res.data;
+  },
+  disableCampaignMedia: async (id) => {
+    const res = await apiClient.delete(`/campaign-media/${id}/`);
+    return res.data;
+  },
+  restoreCampaignMedia: async (id) => {
+    const res = await apiClient.post(`/campaign-media/${id}/restore/`);
+    return res.data;
+  },
 };
 

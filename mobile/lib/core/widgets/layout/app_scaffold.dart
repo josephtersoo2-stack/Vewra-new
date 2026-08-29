@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
 
 /// Centralized scaffold wrapper providing background gradient, drawer, and standard padding.
 class AppScaffold extends StatelessWidget {

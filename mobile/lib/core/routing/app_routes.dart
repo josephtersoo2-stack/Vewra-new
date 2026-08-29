@@ -27,4 +27,5 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String campaigns = '/campaigns';
   static const String campaignDetails = '/campaign-details';
+  static const String campaignMedia = '/campaign-media';
 }

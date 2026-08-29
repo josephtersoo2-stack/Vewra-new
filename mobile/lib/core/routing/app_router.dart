@@ -17,6 +17,7 @@ import '../../features/settings/screens/settings_screen.dart';
 import '../../features/campaigns/models/campaign_model.dart';
 import '../../features/campaigns/screens/campaign_list_screen.dart';
 import '../../features/campaigns/screens/campaign_detail_screen.dart';
+import '../../features/campaigns/screens/campaign_media_screen.dart';
 import '../../features/wallet/screens/transaction_history_screen.dart';
 import '../../features/wallet/screens/withdraw_screen.dart';
 import '../widgets/feedback/app_error_state.dart';
@@ -103,6 +104,20 @@ class AppRouter {
           CampaignDetailScreen(
             initialCampaign: campaign,
             campaignId: campaignId,
+          ),
+          settings,
+        );
+
+      case AppRoutes.campaignMedia:
+        final args = settings.arguments is Map<String, dynamic> ? settings.arguments as Map<String, dynamic> : <String, dynamic>{};
+        final campaignId = args['campaignId']?.toString() ?? (settings.arguments is String ? settings.arguments as String : '');
+        final campaignTitle = args['campaignTitle']?.toString() ?? 'Campaign Creatives';
+        final isAdvertiser = args['isAdvertiser'] == true;
+        return _buildRoute(
+          CampaignMediaScreen(
+            campaignId: campaignId,
+            campaignTitle: campaignTitle,
+            isAdvertiser: isAdvertiser,
           ),
           settings,
         );

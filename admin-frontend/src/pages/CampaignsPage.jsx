@@ -12,10 +12,20 @@ import {
   Layers,
   AlertCircle,
   RefreshCw,
+  Image as ImageIcon,
+  Video,
+  FileText,
+  Eye,
+  Trash2,
+  RotateCcw,
+  Upload,
 } from 'lucide-react';
 import { adminApi } from '../api/adminApi';
 
 export function CampaignsPage() {
+  // Main Navigation Submenus
+  const [activeTab, setActiveTab] = useState('list'); // 'overview', 'list', 'media', 'pending_media', 'disabled_media'
+
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,12 +35,30 @@ export function CampaignsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Form State
+  // Campaign Form State
   const [formData, setFormData] = useState({
     title: '',
     campaign_type: 'TASK',
     description: '',
     budget: '100.00',
+  });
+
+  // Media Management State
+  const [selectedCampaignForMedia, setSelectedCampaignForMedia] = useState(null);
+  const [campaignMediaList, setCampaignMediaList] = useState([]);
+  const [loadingMedia, setLoadingMedia] = useState(false);
+  const [mediaTypeFilter, setMediaTypeFilter] = useState('ALL');
+  const [mediaStatusFilter, setMediaStatusFilter] = useState('ALL');
+  const [isUploadMediaModalOpen, setIsUploadMediaModalOpen] = useState(false);
+  const [previewMediaModal, setPreviewMediaModal] = useState(null);
+
+  // Media Upload Form
+  const [mediaUploadForm, setMediaUploadForm] = useState({
+    campaignId: '',
+    media_type: 'IMAGE',
+    title: '',
+    description: '',
+    file: null,
   });
 
   const loadCampaigns = async () => {
@@ -51,9 +79,38 @@ export function CampaignsPage() {
     }
   };
 
+  const loadMediaForCampaign = async (campaignId) => {
+    if (!campaignId) return;
+    try {
+      setLoadingMedia(true);
+      const params = {};
+      if (mediaTypeFilter !== 'ALL') params.type = mediaTypeFilter;
+      if (mediaStatusFilter !== 'ALL') params.status = mediaStatusFilter;
+
+      const res = await adminApi.getCampaignMedia(campaignId, params);
+      setCampaignMediaList(res.media || res.results || []);
+    } catch (err) {
+      console.error('Failed to load campaign media:', err);
+    } finally {
+      setLoadingMedia(false);
+    }
+  };
+
   useEffect(() => {
     loadCampaigns();
   }, [activeType, statusFilter]);
+
+  useEffect(() => {
+    if (campaigns.length > 0 && !selectedCampaignForMedia) {
+      setSelectedCampaignForMedia(campaigns[0].id);
+    }
+  }, [campaigns]);
+
+  useEffect(() => {
+    if (selectedCampaignForMedia) {
+      loadMediaForCampaign(selectedCampaignForMedia);
+    }
+  }, [selectedCampaignForMedia, mediaTypeFilter, mediaStatusFilter]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -75,32 +132,32 @@ export function CampaignsPage() {
         description: '',
         budget: '100.00',
       });
-      loadCampaigns();
+      await loadCampaigns();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to create campaign');
+      alert(err.response?.data?.error || 'Failed to create campaign.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleApprove = async (id) => {
-    if (!window.confirm('Approve and activate this campaign?')) return;
+    if (!window.confirm('Approve this campaign and transition status to ACTIVE?')) return;
     try {
       await adminApi.approveCampaign(id);
-      loadCampaigns();
+      await loadCampaigns();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to approve campaign');
+      alert(err.response?.data?.error || 'Failed to approve campaign.');
     }
   };
 
   const handleReject = async (id) => {
-    const reason = window.prompt('Enter rejection reason (optional):');
+    const reason = window.prompt('Please enter a rejection reason (optional):');
     if (reason === null) return;
     try {
       await adminApi.rejectCampaign(id, reason);
-      loadCampaigns();
+      await loadCampaigns();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to reject campaign');
+      alert(err.response?.data?.error || 'Failed to reject campaign.');
     }
   };
 
@@ -108,419 +165,549 @@ export function CampaignsPage() {
     if (!window.confirm('Pause this active campaign?')) return;
     try {
       await adminApi.pauseCampaign(id);
-      loadCampaigns();
+      await loadCampaigns();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to pause campaign');
+      alert(err.response?.data?.error || 'Failed to pause campaign.');
     }
   };
 
-  // Metrics calculation
-  const totalBudget = campaigns.reduce((acc, c) => acc + (parseFloat(c.budget) || 0), 0);
-  const activeCount = campaigns.filter((c) => c.status === 'ACTIVE').length;
-  const pendingCount = campaigns.filter((c) => c.status === 'PENDING_REVIEW').length;
+  // Media Actions
+  const handleUploadMedia = async (e) => {
+    e.preventDefault();
+    if (!mediaUploadForm.file) {
+      alert('Please select a file to upload.');
+      return;
+    }
+    const targetCampaignId = mediaUploadForm.campaignId || selectedCampaignForMedia;
+    if (!targetCampaignId) {
+      alert('Please select a campaign.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const formDataObj = new FormData();
+      formDataObj.append('file', mediaUploadForm.file);
+      formDataObj.append('media_type', mediaUploadForm.media_type);
+      formDataObj.append('title', mediaUploadForm.title);
+      formDataObj.append('description', mediaUploadForm.description);
+
+      await adminApi.uploadCampaignMedia(targetCampaignId, formDataObj);
+      setIsUploadMediaModalOpen(false);
+      setMediaUploadForm({
+        campaignId: '',
+        media_type: 'IMAGE',
+        title: '',
+        description: '',
+        file: null,
+      });
+      await loadMediaForCampaign(targetCampaignId);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to upload campaign media.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDisableMedia = async (mediaId) => {
+    if (!window.confirm('Disable this media asset? It will no longer be served in campaigns.')) return;
+    try {
+      await adminApi.disableCampaignMedia(mediaId);
+      await loadMediaForCampaign(selectedCampaignForMedia);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to disable media.');
+    }
+  };
+
+  const handleRestoreMedia = async (mediaId) => {
+    try {
+      await adminApi.restoreCampaignMedia(mediaId);
+      await loadMediaForCampaign(selectedCampaignForMedia);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to restore media.');
+    }
+  };
 
   const getStatusBadge = (status) => {
-    const styles = {
-      ACTIVE: { bg: 'rgba(16, 185, 129, 0.15)', text: '#10B981', label: 'Active' },
-      PENDING_REVIEW: { bg: 'rgba(245, 158, 11, 0.15)', text: '#F59E0B', label: 'Pending Review' },
-      DRAFT: { bg: 'rgba(148, 163, 184, 0.15)', text: '#94A3B8', label: 'Draft' },
-      PAUSED: { bg: 'rgba(99, 102, 241, 0.15)', text: '#6366F1', label: 'Paused' },
-      REJECTED: { bg: 'rgba(239, 68, 68, 0.15)', text: '#EF4444', label: 'Rejected' },
-      COMPLETED: { bg: 'rgba(59, 130, 246, 0.15)', text: '#3B82F6', label: 'Completed' },
-    };
-    const s = styles[status] || styles.DRAFT;
-    return (
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '4px 10px',
-          borderRadius: '999px',
-          fontSize: '12px',
-          fontWeight: '700',
-          backgroundColor: s.bg,
-          color: s.text,
-        }}
-      >
-        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: s.text }} />
-        {s.label}
-      </span>
-    );
+    switch (status) {
+      case 'ACTIVE':
+        return <span className="badge badge-success">Active</span>;
+      case 'PENDING_REVIEW':
+        return <span className="badge badge-warning">Pending Review</span>;
+      case 'DRAFT':
+        return <span className="badge badge-secondary">Draft</span>;
+      case 'PAUSED':
+        return <span className="badge badge-neutral">Paused</span>;
+      case 'COMPLETED':
+        return <span className="badge badge-primary">Completed</span>;
+      case 'REJECTED':
+      case 'DISABLED':
+      case 'FAILED':
+        return <span className="badge badge-danger">{status}</span>;
+      case 'READY':
+        return <span className="badge badge-success">Ready</span>;
+      default:
+        return <span className="badge badge-secondary">{status}</span>;
+    }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Top Header & Action */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h2 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>
-            Campaign Management
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>
-            Unified Campaign Engine: Task Campaigns, Advertisements & Sponsored Content
-          </p>
-        </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '12px 20px',
-            backgroundColor: 'var(--primary)',
-            color: '#FFFFFF',
-            border: 'none',
-            borderRadius: 'var(--btn-radius)',
-            fontWeight: '700',
-            cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)',
-          }}
-        >
-          <Plus size={18} />
-          Create Campaign
-        </button>
-      </div>
-
-      {/* KPI Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-        <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-tertiary)' }}>
-            <Layers size={18} />
-            <span style={{ fontSize: '13px', fontWeight: '600' }}>Total Campaigns</span>
-          </div>
-          <p style={{ fontSize: '28px', fontWeight: '800', color: 'var(--text-primary)', margin: '10px 0 0 0' }}>
-            {campaigns.length}
+          <h1 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Megaphone size={28} color="var(--primary-color)" />
+            Campaign & Advertising Platform
+          </h1>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+            Manage task campaigns, advertising creatives, media assets, reviews, and budgets.
           </p>
         </div>
 
-        <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#10B981' }}>
-            <CheckCircle size={18} />
-            <span style={{ fontSize: '13px', fontWeight: '600' }}>Active Campaigns</span>
-          </div>
-          <p style={{ fontSize: '28px', fontWeight: '800', color: '#10B981', margin: '10px 0 0 0' }}>
-            {activeCount}
-          </p>
-        </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={() => {
+              setMediaUploadForm((prev) => ({ ...prev, campaignId: selectedCampaignForMedia || (campaigns[0]?.id || '') }));
+              setIsUploadMediaModalOpen(true);
+            }}
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Upload size={18} />
+            Upload Media
+          </button>
 
-        <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#F59E0B' }}>
-            <Clock size={18} />
-            <span style={{ fontSize: '13px', fontWeight: '600' }}>Pending Approval</span>
-          </div>
-          <p style={{ fontSize: '28px', fontWeight: '800', color: '#F59E0B', margin: '10px 0 0 0' }}>
-            {pendingCount}
-          </p>
-        </div>
-
-        <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--primary)' }}>
-            <DollarSign size={18} />
-            <span style={{ fontSize: '13px', fontWeight: '600' }}>Allocated Budget</span>
-          </div>
-          <p style={{ fontSize: '28px', fontWeight: '800', color: 'var(--text-primary)', margin: '10px 0 0 0' }}>
-            ${totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-          </p>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="btn btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Plus size={18} />
+            Create Campaign
+          </button>
         </div>
       </div>
 
-      {/* Filter and Search Controls */}
-      <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '16px 20px', borderRadius: '16px', border: '1px solid var(--border-subtle)', display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
-        {/* Type Tabs */}
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {[
-            { label: 'All Types', value: 'ALL' },
-            { label: 'Task Campaigns', value: 'TASK' },
-            { label: 'Advertisements', value: 'ADVERTISEMENT' },
-            { label: 'Sponsored Content', value: 'SPONSORED_CONTENT' },
-          ].map((tab) => (
+      {/* Submenu Navigation Tabs */}
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color)', marginBottom: '24px' }}>
+        {[
+          { key: 'overview', label: 'Campaign Overview', icon: Layers },
+          { key: 'list', label: 'Campaign List', icon: FileText },
+          { key: 'media', label: 'Campaign Media', icon: ImageIcon },
+          { key: 'pending_media', label: 'Pending Media Review', icon: Clock },
+          { key: 'disabled_media', label: 'Disabled Media', icon: XCircle },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.key;
+          return (
             <button
-              key={tab.value}
-              onClick={() => setActiveType(tab.value)}
+              key={tab.key}
+              onClick={() => {
+                setActiveTab(tab.key);
+                if (tab.key === 'pending_media') {
+                  setMediaStatusFilter('PROCESSING');
+                } else if (tab.key === 'disabled_media') {
+                  setMediaStatusFilter('DISABLED');
+                } else {
+                  setMediaStatusFilter('ALL');
+                }
+              }}
               style={{
-                padding: '8px 14px',
-                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 18px',
+                background: 'none',
                 border: 'none',
-                backgroundColor: activeType === tab.value ? 'var(--primary)' : 'transparent',
-                color: activeType === tab.value ? '#FFFFFF' : 'var(--text-secondary)',
-                fontWeight: activeType === tab.value ? '700' : '500',
+                borderBottom: isActive ? '2px solid var(--primary-color)' : '2px solid transparent',
+                color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)',
+                fontWeight: isActive ? '700' : '500',
                 cursor: 'pointer',
-                fontSize: '13px',
+                fontSize: '14px',
               }}
             >
+              <Icon size={16} />
               {tab.label}
             </button>
-          ))}
-        </div>
-
-        {/* Search & Status Filters */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '8px',
-              backgroundColor: 'var(--bg-primary)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-subtle)',
-              fontSize: '13px',
-            }}
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="PENDING_REVIEW">Pending Review</option>
-            <option value="DRAFT">Draft</option>
-            <option value="PAUSED">Paused</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
-
-          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '8px' }}>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Search size={16} style={{ position: 'absolute', left: '12px', color: 'var(--text-tertiary)' }} />
-              <input
-                type="text"
-                placeholder="Search campaigns..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  padding: '8px 12px 8px 36px',
-                  borderRadius: '8px',
-                  backgroundColor: 'var(--bg-primary)',
-                  color: 'var(--text-primary)',
-                  border: '1px solid var(--border-subtle)',
-                  fontSize: '13px',
-                  width: '200px',
-                }}
-              />
-            </div>
-            <button
-              type="submit"
-              style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
-                backgroundColor: 'var(--bg-primary)',
-                border: '1px solid var(--border-subtle)',
-                color: 'var(--text-primary)',
-                cursor: 'pointer',
-              }}
-            >
-              <RefreshCw size={14} />
-            </button>
-          </form>
-        </div>
+          );
+        })}
       </div>
 
-      {/* Campaigns Data Table */}
-      <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <RefreshCw size={24} className="spin-animation" style={{ marginBottom: '12px' }} />
-            <p>Loading campaigns catalogue...</p>
-          </div>
-        ) : error ? (
-          <div style={{ padding: '48px', textAlign: 'center', color: 'var(--accent-rose)' }}>
-            <AlertCircle size={24} style={{ marginBottom: '12px' }} />
-            <p>{error}</p>
-          </div>
-        ) : campaigns.length === 0 ? (
-          <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <Megaphone size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
-            <p style={{ fontWeight: '600' }}>No campaigns found.</p>
-            <p style={{ fontSize: '13px', marginTop: '4px' }}>Create a campaign to get started with advertising.</p>
-          </div>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-tertiary)', fontSize: '12px' }}>
-                <th style={{ padding: '16px 20px' }}>CAMPAIGN</th>
-                <th style={{ padding: '16px 20px' }}>TYPE</th>
-                <th style={{ padding: '16px 20px' }}>OWNER</th>
-                <th style={{ padding: '16px 20px' }}>STATUS</th>
-                <th style={{ padding: '16px 20px' }}>BUDGET</th>
-                <th style={{ padding: '16px 20px' }}>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {campaigns.map((c) => (
-                <tr key={c.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  <td style={{ padding: '16px 20px' }}>
-                    <div style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{c.title}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                      ID: {c.id}
-                    </div>
-                  </td>
-                  <td style={{ padding: '16px 20px' }}>
-                    <span
-                      style={{
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        backgroundColor: 'var(--primary-light)',
-                        color: 'var(--primary)',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                      }}
-                    >
-                      {c.campaign_type_display || c.campaign_type}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px 20px', color: 'var(--text-secondary)' }}>
-                    {c.owner_details?.email || 'System'}
-                  </td>
-                  <td style={{ padding: '16px 20px' }}>{getStatusBadge(c.status)}</td>
-                  <td style={{ padding: '16px 20px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                    ${parseFloat(c.budget || 0).toFixed(2)}
-                  </td>
-                  <td style={{ padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      {c.status === 'PENDING_REVIEW' && (
-                        <>
-                          <button
-                            onClick={() => handleApprove(c.id)}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: '6px',
-                              backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                              color: '#10B981',
-                              border: '1px solid rgba(16, 185, 129, 0.4)',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '12px',
-                            }}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleReject(c.id)}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: '6px',
-                              backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                              color: '#EF4444',
-                              border: '1px solid rgba(239, 68, 68, 0.4)',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '12px',
-                            }}
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                      {c.status === 'ACTIVE' && (
-                        <button
-                          onClick={() => handlePause(c.id)}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            backgroundColor: 'rgba(99, 102, 241, 0.2)',
-                            color: '#6366F1',
-                            border: '1px solid rgba(99, 102, 241, 0.4)',
-                            cursor: 'pointer',
-                            fontWeight: '600',
-                            fontSize: '12px',
-                          }}
-                        >
-                          Pause
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Create Campaign Modal */}
-      {isModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: 'var(--bg-secondary)',
-              padding: '32px',
-              borderRadius: '20px',
-              width: '100%',
-              maxWidth: '520px',
-              border: '1px solid var(--border-subtle)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>
-                Create New Campaign
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}
-              >
-                ✕
-              </button>
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          <div className="card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>TOTAL CAMPAIGNS</span>
+              <Layers size={20} color="var(--primary-color)" />
             </div>
+            <div style={{ fontSize: '28px', fontWeight: '800', marginTop: '12px' }}>{campaigns.length}</div>
+          </div>
 
-            <form onSubmit={handleCreateCampaign} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                  Campaign Title
-                </label>
+          <div className="card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>ACTIVE CAMPAIGNS</span>
+              <CheckCircle size={20} color="#10b981" />
+            </div>
+            <div style={{ fontSize: '28px', fontWeight: '800', marginTop: '12px', color: '#10b981' }}>
+              {campaigns.filter((c) => c.status === 'ACTIVE').length}
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>PENDING REVIEWS</span>
+              <Clock size={20} color="#f59e0b" />
+            </div>
+            <div style={{ fontSize: '28px', fontWeight: '800', marginTop: '12px', color: '#f59e0b' }}>
+              {campaigns.filter((c) => c.status === 'PENDING_REVIEW').length}
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>TOTAL BUDGET POOL</span>
+              <DollarSign size={20} color="#6366f1" />
+            </div>
+            <div style={{ fontSize: '28px', fontWeight: '800', marginTop: '12px' }}>
+              ${campaigns.reduce((sum, c) => sum + (parseFloat(c.budget) || 0), 0).toFixed(2)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Campaigns List Tab */}
+      {activeTab === 'list' && (
+        <>
+          {/* Filter Toolbar */}
+          <div className="card" style={{ padding: '16px', marginBottom: '20px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Search Input */}
+            <form onSubmit={handleSearchSubmit} style={{ flex: '1', minWidth: '240px', display: 'flex', gap: '8px' }}>
+              <div style={{ position: 'relative', width: '100%' }}>
+                <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                 <input
                   type="text"
-                  required
-                  placeholder="e.g. Summer Promo 2026"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="Search campaigns by title, description, or owner..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '10px 14px',
+                    padding: '10px 12px 10px 38px',
                     borderRadius: '8px',
-                    backgroundColor: 'var(--bg-primary)',
-                    border: '1px solid var(--border-subtle)',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--bg-primary)',
                     color: 'var(--text-primary)',
-                    fontSize: '14px',
-                    boxSizing: 'border-box',
                   }}
                 />
               </div>
+              <button type="submit" className="btn btn-secondary">Search</button>
+            </form>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                  Campaign Type
-                </label>
+            {/* Type Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>Type:</span>
+              <select
+                value={activeType}
+                onChange={(e) => setActiveType(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+              >
+                <option value="ALL">All Types</option>
+                <option value="TASK">Task Campaign</option>
+                <option value="ADVERTISEMENT">Advertisement</option>
+                <option value="SPONSORED_CONTENT">Sponsored Content</option>
+              </select>
+            </div>
+
+            {/* Status Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>Status:</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="DRAFT">Draft</option>
+                <option value="PENDING_REVIEW">Pending Review</option>
+                <option value="ACTIVE">Active</option>
+                <option value="PAUSED">Paused</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Data Table */}
+          <div className="card" style={{ overflow: 'hidden' }}>
+            {loading ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <RefreshCw size={24} className="spin" style={{ margin: '0 auto 12px' }} />
+                Loading campaigns catalog...
+              </div>
+            ) : campaigns.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                No campaigns match the selected filters.
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-color)' }}>
+                    <th style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>CAMPAIGN</th>
+                    <th style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>TYPE</th>
+                    <th style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>STATUS</th>
+                    <th style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>BUDGET</th>
+                    <th style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>OWNER</th>
+                    <th style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>CREATED</th>
+                    <th style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'right' }}>ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {campaigns.map((c) => (
+                    <tr key={c.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ padding: '16px' }}>
+                        <div style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{c.title}</div>
+                        {c.description && <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>{c.description}</div>}
+                      </td>
+                      <td style={{ padding: '16px', fontSize: '13px' }}>{c.campaign_type_display || c.campaign_type}</td>
+                      <td style={{ padding: '16px' }}>{getStatusBadge(c.status)}</td>
+                      <td style={{ padding: '16px', fontWeight: '700' }}>${parseFloat(c.budget).toFixed(2)}</td>
+                      <td style={{ padding: '16px', fontSize: '13px' }}>{c.owner_details?.email || 'System'}</td>
+                      <td style={{ padding: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        {new Date(c.created_at).toLocaleDateString()}
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                          <button
+                            onClick={() => {
+                              setSelectedCampaignForMedia(c.id);
+                              setActiveTab('media');
+                            }}
+                            className="btn btn-secondary btn-sm"
+                            title="View Attached Media Assets"
+                          >
+                            <ImageIcon size={14} />
+                            Media
+                          </button>
+
+                          {c.status === 'PENDING_REVIEW' && (
+                            <>
+                              <button onClick={() => handleApprove(c.id)} className="btn btn-success btn-sm" title="Approve Campaign">
+                                <CheckCircle size={14} />
+                                Approve
+                              </button>
+                              <button onClick={() => handleReject(c.id)} className="btn btn-danger btn-sm" title="Reject Campaign">
+                                <XCircle size={14} />
+                                Reject
+                              </button>
+                            </>
+                          )}
+
+                          {c.status === 'ACTIVE' && (
+                            <button onClick={() => handlePause(c.id)} className="btn btn-secondary btn-sm" title="Pause Campaign">
+                              <PauseCircle size={14} />
+                              Pause
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Campaign Media Tab / Views */}
+      {(activeTab === 'media' || activeTab === 'pending_media' || activeTab === 'disabled_media') && (
+        <div>
+          {/* Campaign Selector Bar */}
+          <div className="card" style={{ padding: '16px', marginBottom: '20px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1', minWidth: '260px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>Select Campaign:</span>
+              <select
+                value={selectedCampaignForMedia || ''}
+                onChange={(e) => setSelectedCampaignForMedia(e.target.value)}
+                style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+              >
+                {campaigns.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title} ({c.campaign_type_display})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>Media Type:</span>
+              <select
+                value={mediaTypeFilter}
+                onChange={(e) => setMediaTypeFilter(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+              >
+                <option value="ALL">All Media Types</option>
+                <option value="VIDEO">Videos</option>
+                <option value="BANNER">Banners</option>
+                <option value="IMAGE">Images</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Media Grid / Assets */}
+          {loadingMedia ? (
+            <div className="card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              <RefreshCw size={24} className="spin" style={{ margin: '0 auto 12px' }} />
+              Loading campaign media assets...
+            </div>
+          ) : campaignMediaList.length === 0 ? (
+            <div className="card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              <ImageIcon size={32} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+              <div>No media creatives attached to this campaign.</div>
+              <button
+                onClick={() => {
+                  setMediaUploadForm((prev) => ({ ...prev, campaignId: selectedCampaignForMedia }));
+                  setIsUploadMediaModalOpen(true);
+                }}
+                className="btn btn-primary"
+                style={{ marginTop: '16px' }}
+              >
+                <Upload size={16} /> Upload First Creative
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+              {campaignMediaList.map((media) => (
+                <div key={media.id} className="card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  {/* Thumbnail / Preview Area */}
+                  <div
+                    style={{
+                      height: '180px',
+                      background: 'var(--bg-primary)',
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderBottom: '1px solid var(--border-color)',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {media.media_type === 'VIDEO' ? (
+                      <div style={{ textAlign: 'center' }}>
+                        <Video size={48} color="var(--primary-color)" />
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>Video Creative ({media.duration_seconds || 0}s)</div>
+                      </div>
+                    ) : media.file_url ? (
+                      <img
+                        src={media.file_url}
+                        alt={media.title}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <ImageIcon size={48} color="var(--text-secondary)" />
+                    )}
+
+                    <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
+                      {getStatusBadge(media.status)}
+                    </div>
+                  </div>
+
+                  {/* Body Details */}
+                  <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>{media.title}</h3>
+                      <span className="badge badge-secondary" style={{ fontSize: '11px' }}>{media.media_type_display}</span>
+                    </div>
+
+                    {media.description && (
+                      <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px', flex: 1 }}>{media.description}</p>
+                    )}
+
+                    {/* Metadata specs */}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      {media.width && media.height && (
+                        <span style={{ padding: '2px 6px', background: 'var(--bg-primary)', borderRadius: '4px' }}>
+                          {media.width}x{media.height}
+                        </span>
+                      )}
+                      <span style={{ padding: '2px 6px', background: 'var(--bg-primary)', borderRadius: '4px' }}>
+                        {media.file_size_formatted || `${media.file_size} B`}
+                      </span>
+                      <span style={{ padding: '2px 6px', background: 'var(--bg-primary)', borderRadius: '4px' }}>
+                        {media.mime_type}
+                      </span>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+                      <button
+                        onClick={() => setPreviewMediaModal(media)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <Eye size={14} /> Preview
+                      </button>
+
+                      {media.status !== 'DISABLED' ? (
+                        <button
+                          onClick={() => handleDisableMedia(media.id)}
+                          className="btn btn-danger btn-sm"
+                          style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <Trash2 size={14} /> Disable
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleRestoreMedia(media.id)}
+                          className="btn btn-success btn-sm"
+                          style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <RotateCcw size={14} /> Restore
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Create Campaign Modal */}
+      {isModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="card" style={{ width: '500px', maxWidth: '90%', padding: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '16px' }}>Create New Campaign</h2>
+            <form onSubmit={handleCreateCampaign}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Campaign Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Summer Video Promo 2026"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Campaign Type</label>
                 <select
                   value={formData.campaign_type}
                   onChange={(e) => setFormData({ ...formData, campaign_type: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--bg-primary)',
-                    border: '1px solid var(--border-subtle)',
-                    color: 'var(--text-primary)',
-                    fontSize: '14px',
-                    boxSizing: 'border-box',
-                  }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                 >
                   <option value="TASK">Task Campaign</option>
                   <option value="ADVERTISEMENT">Advertisement Campaign</option>
-                  <option value="SPONSORED_CONTENT">Sponsored Content Campaign</option>
+                  <option value="SPONSORED_CONTENT">Sponsored Content</option>
                 </select>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                  Budget (USD)
-                </label>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Budget Pool (USD)</label>
                 <input
                   type="number"
                   step="0.01"
@@ -528,74 +715,134 @@ export function CampaignsPage() {
                   required
                   value={formData.budget}
                   onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--bg-primary)',
-                    border: '1px solid var(--border-subtle)',
-                    color: 'var(--text-primary)',
-                    fontSize: '14px',
-                    boxSizing: 'border-box',
-                  }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                  Description
-                </label>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Description</label>
                 <textarea
                   rows="3"
-                  placeholder="Overview of the campaign goals..."
+                  placeholder="Campaign objectives and requirements..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--bg-primary)',
-                    border: '1px solid var(--border-subtle)',
-                    color: 'var(--text-primary)',
-                    fontSize: '14px',
-                    boxSizing: 'border-box',
-                  }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  style={{
-                    padding: '10px 16px',
-                    borderRadius: '8px',
-                    backgroundColor: 'transparent',
-                    border: '1px solid var(--border-subtle)',
-                    color: 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    fontWeight: '600',
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{
-                    padding: '10px 20px',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--primary)',
-                    border: 'none',
-                    color: '#FFFFFF',
-                    cursor: 'pointer',
-                    fontWeight: '700',
-                  }}
-                >
-                  {submitting ? 'Creating...' : 'Create Draft'}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">Cancel</button>
+                <button type="submit" disabled={submitting} className="btn btn-primary">
+                  {submitting ? 'Creating...' : 'Create Draft Campaign'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Media Modal */}
+      {isUploadMediaModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="card" style={{ width: '520px', maxWidth: '90%', padding: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '16px' }}>Upload Campaign Media Creative</h2>
+            <form onSubmit={handleUploadMedia}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Target Campaign</label>
+                <select
+                  value={mediaUploadForm.campaignId}
+                  onChange={(e) => setMediaUploadForm({ ...mediaUploadForm, campaignId: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                >
+                  {campaigns.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title} ({c.campaign_type_display})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Media Asset Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 728x90 Header Banner"
+                  value={mediaUploadForm.title}
+                  onChange={(e) => setMediaUploadForm({ ...mediaUploadForm, title: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Asset Category</label>
+                <select
+                  value={mediaUploadForm.media_type}
+                  onChange={(e) => setMediaUploadForm({ ...mediaUploadForm, media_type: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                >
+                  <option value="IMAGE">Image Asset (jpg, png, webp - max 10MB)</option>
+                  <option value="BANNER">Banner Asset (jpg, png, webp - max 10MB)</option>
+                  <option value="VIDEO">Video Asset (mp4, mov - max 500MB)</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Select File</label>
+                <input
+                  type="file"
+                  required
+                  accept={mediaUploadForm.media_type === 'VIDEO' ? 'video/mp4,video/quicktime' : 'image/jpeg,image/png,image/webp'}
+                  onChange={(e) => setMediaUploadForm({ ...mediaUploadForm, file: e.target.files[0] })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Description</label>
+                <textarea
+                  rows="2"
+                  placeholder="Creative specifications or placement instructions..."
+                  value={mediaUploadForm.description}
+                  onChange={(e) => setMediaUploadForm({ ...mediaUploadForm, description: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" onClick={() => setIsUploadMediaModalOpen(false)} className="btn btn-secondary">Cancel</button>
+                <button type="submit" disabled={submitting} className="btn btn-primary">
+                  {submitting ? 'Uploading...' : 'Upload Asset'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {previewMediaModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="card" style={{ width: '700px', maxWidth: '90%', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '800', margin: 0 }}>{previewMediaModal.title}</h2>
+              <button onClick={() => setPreviewMediaModal(null)} className="btn btn-secondary btn-sm">Close</button>
+            </div>
+
+            <div style={{ maxHeight: '400px', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
+              {previewMediaModal.media_type === 'VIDEO' ? (
+                <video controls src={previewMediaModal.file_url} style={{ maxWidth: '100%', maxHeight: '380px' }} />
+              ) : (
+                <img src={previewMediaModal.file_url} alt={previewMediaModal.title} style={{ maxWidth: '100%', maxHeight: '380px', objectFit: 'contain' }} />
+              )}
+            </div>
+
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div><strong>Format:</strong> {previewMediaModal.mime_type}</div>
+              <div><strong>Size:</strong> {previewMediaModal.file_size_formatted || previewMediaModal.file_size}</div>
+              <div><strong>Dimensions:</strong> {previewMediaModal.width && previewMediaModal.height ? `${previewMediaModal.width}x${previewMediaModal.height}` : 'N/A'}</div>
+              <div><strong>Status:</strong> {previewMediaModal.status}</div>
+            </div>
           </div>
         </div>
       )}

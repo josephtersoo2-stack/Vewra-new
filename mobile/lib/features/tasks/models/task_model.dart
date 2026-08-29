@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// Personalized randomized search instruction for YouTube discovery tasks.
 class TaskInstructionModel {
   final String searchQuery;

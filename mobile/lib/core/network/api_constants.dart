@@ -87,4 +87,8 @@ class ApiConstants {
   static String campaignApprove(String id) => '/campaigns/$id/approve/';
   static String campaignReject(String id) => '/campaigns/$id/reject/';
   static String campaignPause(String id) => '/campaigns/$id/pause/';
+  static String campaignMediaList(String campaignId) => '/campaigns/$campaignId/media/';
+  static String campaignMediaUpload(String campaignId) => '/campaigns/$campaignId/media/upload/';
+  static String campaignMediaDetail(String mediaId) => '/campaign-media/$mediaId/';
+  static String campaignMediaRestore(String mediaId) => '/campaign-media/$mediaId/restore/';
 }
