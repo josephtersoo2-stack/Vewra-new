@@ -63,8 +63,8 @@ class CampaignApiService {
       'campaign_type': campaignType,
       'description': description,
       'budget': budget,
-      if (startDate != null) 'start_date': startDate,
-      if (endDate != null) 'end_date': endDate,
+      'start_date': ?startDate,
+      'end_date': ?endDate,
     };
 
     final response = await _apiClient.dio.post(

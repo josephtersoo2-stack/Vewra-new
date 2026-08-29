@@ -85,7 +85,7 @@ class TaskEligibilityService:
                 verification_ok = False
                 reasons.append("KYC identity verification required to unlock this task.")
 
-        # 8. Daily User Limit (Controls whether new reward is earnable, but never restricts watching)
+        # 8. Daily User Limit (Checks if user reached maximum daily completions)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         today_completions = TaskAttempt.objects.filter(
             user=user,
@@ -93,8 +93,10 @@ class TaskEligibilityService:
             status=TaskAttemptStatus.COMPLETED,
             completed_at__gte=today_start
         ).count()
-        already_completed = today_completions >= task.daily_user_limit
-        daily_ok = True  # Always allow watching even if already rewarded
+        already_completed = (task.daily_user_limit is not None and task.daily_user_limit > 0 and today_completions >= task.daily_user_limit)
+        daily_ok = not already_completed
+        if not daily_ok:
+            reasons.append("Daily limit reached.")
 
         # 9. Repeat / Active Attempt Rule
         repeat_ok = True
@@ -116,7 +118,8 @@ class TaskEligibilityService:
             capacity and
             level_ok and
             trust_ok and
-            verification_ok
+            verification_ok and
+            daily_ok
         )
 
         return {
@@ -131,7 +134,7 @@ class TaskEligibilityService:
                 "level": level_ok,
                 "trust_score": trust_ok,
                 "verification": verification_ok,
-                "daily_limit": not already_completed,
+                "daily_limit": daily_ok,
                 "repeat_rule": repeat_ok,
             },
             "active_attempt_id": str(active_attempt.id) if active_attempt else None,

@@ -459,7 +459,7 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                                     const SizedBox(width: 8),
                                     Flexible(
                                       child: Text(
-                                        'Search Keyword',
+                                        'Assigned Search Keyword',
                                         style: AppTypography.titleSmall.copyWith(
                                           fontWeight: FontWeight.w700,
                                           color: AppColors.textPrimary,

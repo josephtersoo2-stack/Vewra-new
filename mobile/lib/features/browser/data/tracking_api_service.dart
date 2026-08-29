@@ -36,7 +36,7 @@ class TrackingApiService {
       data: {
         'sequence': sequence,
         'is_google_authenticated': isGoogleAuthenticated,
-        if (playbackPosition != null) 'playback_position': playbackPosition,
+        'playback_position': ?playbackPosition,
         if (clientTimestamp != null)
           'client_timestamp': clientTimestamp.toIso8601String(),
       },
@@ -67,8 +67,8 @@ class TrackingApiService {
       data: {
         'event_type': eventType,
         'sequence': sequence,
-        if (playbackPosition != null) 'playback_position': playbackPosition,
-        if (metadata != null) 'metadata': metadata,
+        'playback_position': ?playbackPosition,
+        'metadata': ?metadata,
       },
       options: Options(
         headers: {'X-VEWRA-WATCH-TOKEN': watchToken},

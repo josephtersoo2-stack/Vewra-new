@@ -21,13 +21,10 @@ class CampaignMediaListNotifier
   final Ref _ref;
 
   CampaignMediaListNotifier({
-    required CampaignMediaRepository repository,
-    required String campaignId,
-    required Ref ref,
-  })  : _repository = repository,
-        _campaignId = campaignId,
-        _ref = ref,
-        super(const AsyncValue.loading()) {
+    required this._repository,
+    required this._campaignId,
+    required this._ref,
+  }) : super(const AsyncValue.loading()) {
     loadMedia();
   }
 

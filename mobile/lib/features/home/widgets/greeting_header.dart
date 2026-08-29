@@ -46,7 +46,7 @@ class GreetingHeader extends StatelessWidget {
                 ? Image.network(
                     user.avatarUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, _) => const Center(
+                    errorBuilder: (_, _, _) => const Center(
                       child: Icon(Icons.person_rounded, color: Colors.white, size: 22),
                     ),
                   )

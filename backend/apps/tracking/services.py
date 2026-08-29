@@ -121,13 +121,15 @@ class HeartbeatProcessingService:
                 }
             }
 
-        # 3. Monotonic sequence check — lenient: accept any forward sequence,
-        #    auto-reset if client restarted (e.g. app reinstall / session resume)
-        if sequence <= session.last_sequence:
-            # Client likely restarted — accept and re-sync
-            logger.info(
-                "Sequence reset for session %s: server had %s, client sent %s — re-syncing.",
-                session_id, session.last_sequence, sequence
+        # 3. Monotonic sequence check — must be strictly sequential (expected session.last_sequence + 1)
+        expected_sequence = session.last_sequence + 1
+        if sequence != expected_sequence:
+            logger.warning(
+                "Invalid heartbeat sequence for session %s: expected %d, received %d",
+                session_id, expected_sequence, sequence
+            )
+            raise ValidationError(
+                f"Invalid heartbeat sequence: expected {expected_sequence}, received {sequence}."
             )
 
         # 4. Calculate credited time with Anti-Cheat Delta validation & Google Sign-In Gate

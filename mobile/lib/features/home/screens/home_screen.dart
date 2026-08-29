@@ -9,7 +9,6 @@ import '../../../services/dummy_data_service.dart';
 import '../../../models/task_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../profile/providers/profile_provider.dart';
-import '../../wallet/providers/wallet_provider.dart';
 import '../../tasks/providers/task_feed_provider.dart';
 import '../widgets/greeting_header.dart';
 import '../widgets/home_ad_spot_card.dart';

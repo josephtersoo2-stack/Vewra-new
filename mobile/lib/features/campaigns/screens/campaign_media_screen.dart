@@ -58,7 +58,7 @@ class _CampaignMediaScreenState extends ConsumerState<CampaignMediaScreen> {
                 vertical: AppConstants.space4,
               ),
               itemCount: _typeFilters.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (context, idx) {
                 final filter = _typeFilters[idx];
                 final isSelected = activeTypeFilter == filter['value'];
@@ -105,7 +105,7 @@ class _CampaignMediaScreenState extends ConsumerState<CampaignMediaScreen> {
                   child: ListView.separated(
                     padding: const EdgeInsets.all(AppConstants.space16),
                     itemCount: mediaList.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: AppConstants.space12),
+                    separatorBuilder: (_, _) => const SizedBox(height: AppConstants.space12),
                     itemBuilder: (context, index) {
                       final media = mediaList[index];
                       return CampaignMediaCard(

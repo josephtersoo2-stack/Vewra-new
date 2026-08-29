@@ -49,7 +49,6 @@ class _YouTubeBrowserScreenState extends ConsumerState<YouTubeBrowserScreen>
   bool _isGoogleLoggedIn = false;
   bool _isPlaying = false;
   bool _isTargetDetected = false;
-  double _totalWatchedSeconds = 0.0;
   bool _isCompleted = false;
   bool _hasShownCelebration = false;
 
@@ -207,9 +206,7 @@ class _YouTubeBrowserScreenState extends ConsumerState<YouTubeBrowserScreen>
         ? widget.task.requiredWatchSeconds.toDouble()
         : (isIntervalTask ? 60.0 : 300.0);
 
-    final currentWatched = trackingState.creditedWatchSeconds > 0
-        ? trackingState.creditedWatchSeconds.toDouble()
-        : _totalWatchedSeconds;
+    final currentWatched = trackingState.creditedWatchSeconds.toDouble();
 
     if (isIntervalTask) {
       final interval = targetSec > 0 ? targetSec : 60.0;
@@ -350,9 +347,7 @@ class _YouTubeBrowserScreenState extends ConsumerState<YouTubeBrowserScreen>
             : 'https://m.youtube.com/watch?v=${widget.task.videoId}')
         : 'https://m.youtube.com';
 
-    final effectiveWatched = trackingState.creditedWatchSeconds > 0
-        ? trackingState.creditedWatchSeconds.toDouble()
-        : _totalWatchedSeconds;
+    final effectiveWatched = trackingState.creditedWatchSeconds.toDouble();
 
     final isIntervalTask = widget.task.rewardType == 'per_time';
     final targetSec = widget.task.requiredWatchSeconds > 0

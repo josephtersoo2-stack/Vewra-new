@@ -150,7 +150,7 @@ class ProfileHeader extends ConsumerWidget {
                       ? Image.network(
                           avatarUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, _) => const Center(
+                          errorBuilder: (_, _, _) => const Center(
                             child: Icon(Icons.person_rounded, color: Colors.white, size: 50),
                           ),
                         )
