@@ -17,7 +17,7 @@ class ApiConstants {
     } catch (_) {
       // Graceful fallback when dotenv is not initialized (e.g., test runners)
     }
-    return 'http://127.0.0.1:8000/api/v1';
+    return 'http://192.168.1.45:8000/api/v1';
   }
 
   // Network Timeouts

@@ -36,9 +36,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _checkBiometrics() async {
-    final available = await _biometricService.isBiometricsAvailable();
+    // Only show biometric button if BOTH conditions are true:
+    // 1. Hardware supports biometrics
+    // 2. User has explicitly enabled biometrics in Settings and credentials are saved
+    final hardwareAvailable = await _biometricService.isBiometricsAvailable();
+    final userEnabled = await _biometricService.hasSavedCredentials();
     if (mounted) {
-      setState(() => _canUseBiometrics = available);
+      setState(() => _canUseBiometrics = hardwareAvailable && userEnabled);
     }
   }
 
@@ -65,11 +69,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() => _isLoading = false);
 
       if (success) {
-        // Save credentials for future biometric logins
-        await _biometricService.saveBiometricCredentials(
-          email: email,
-          password: password,
-        );
+        // Only update saved credentials if biometrics are already enabled by the user
+        final biometricsEnabled = await _biometricService.hasSavedCredentials();
+        if (biometricsEnabled) {
+          await _biometricService.saveBiometricCredentials(
+            email: email,
+            password: password,
+          );
+        }
 
         if (!mounted) return;
         Navigator.pushNamedAndRemoveUntil(

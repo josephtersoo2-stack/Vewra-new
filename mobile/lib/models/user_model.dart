@@ -80,7 +80,7 @@ class UserModel {
       final origin = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
       return '$origin$cleanPath';
     }
-    return 'http://127.0.0.1:8000$cleanPath';
+    return 'http://192.168.1.45:8000$cleanPath';
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
