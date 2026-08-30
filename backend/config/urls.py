@@ -22,7 +22,8 @@ urlpatterns = [
     path('api/v1/campaign-media/<uuid:pk>/', include('apps.campaigns.media_urls')),
     path('api/v1/ad-placement/<uuid:pk>/', include('apps.campaigns.placement_urls')),
     path('api/v1/ad-placements/', __import__('apps.campaigns.views', fromlist=['CampaignPlacementAllListView']).CampaignPlacementAllListView.as_view(), name='all-ad-placements'),
-    path('api/v1/ads/<str:placement_type>/', __import__('apps.campaigns.views', fromlist=['ActiveAdsDeliveryView']).ActiveAdsDeliveryView.as_view(), name='active-ads-delivery'),
+    path('api/v1/ads/', include('apps.campaigns.tracking.ad_urls')),
+    path('api/v1/advertiser/analytics/', __import__('apps.campaigns.tracking.views', fromlist=['AdvertiserOverviewAnalyticsView']).AdvertiserOverviewAnalyticsView.as_view(), name='advertiser-analytics'),
     path('api/v1/admin/', include('apps.admin_api.urls')),
 ]
 

@@ -21,12 +21,16 @@ import {
   Upload,
   Radio,
   PlayCircle,
+  BarChart2,
+  TrendingUp,
+  MousePointer,
+  Activity,
 } from 'lucide-react';
 import { adminApi } from '../api/adminApi';
 
 export function CampaignsPage() {
   // Main Navigation Submenus
-  const [activeTab, setActiveTab] = useState('list'); // 'overview', 'list', 'media', 'pending_media', 'disabled_media'
+  const [activeTab, setActiveTab] = useState('list'); // 'overview', 'list', 'media', 'placements', 'analytics'
 
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +40,11 @@ export function CampaignsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Campaign Analytics State (Phase 5.5 Step 4)
+  const [selectedCampaignForAnalytics, setSelectedCampaignForAnalytics] = useState('ALL');
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
 
   // Campaign Form State
   const [formData, setFormData] = useState({
@@ -171,6 +180,29 @@ export function CampaignsPage() {
       loadMediaForCampaign(selectedCampaignForMedia);
     }
   }, [selectedCampaignForMedia, mediaTypeFilter, mediaStatusFilter]);
+
+  const loadAnalytics = async () => {
+    try {
+      setLoadingAnalytics(true);
+      if (selectedCampaignForAnalytics === 'ALL') {
+        const res = await adminApi.getAdvertiserOverviewAnalytics();
+        setAnalyticsData(res);
+      } else {
+        const res = await adminApi.getCampaignAnalytics(selectedCampaignForAnalytics);
+        setAnalyticsData(res);
+      }
+    } catch (err) {
+      console.error('Failed to load campaign analytics:', err);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      loadAnalytics();
+    }
+  }, [activeTab, selectedCampaignForAnalytics]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -449,6 +481,7 @@ export function CampaignsPage() {
           { key: 'list', label: 'Campaign List', icon: FileText },
           { key: 'media', label: 'Campaign Media', icon: ImageIcon },
           { key: 'placements', label: 'Ad Placements', icon: Radio },
+          { key: 'analytics', label: 'Analytics & Tracking', icon: BarChart2 },
           { key: 'pending_media', label: 'Pending Media Review', icon: Clock },
           { key: 'disabled_media', label: 'Disabled Media', icon: XCircle },
         ].map((tab) => {
@@ -1001,6 +1034,243 @@ export function CampaignsPage() {
               </table>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Analytics & Measurement Foundation (Phase 5.5 Step 4) */}
+      {activeTab === 'analytics' && (
+        <div>
+          {/* Analytics Toolbar */}
+          <div className="card" style={{ padding: '16px 20px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '280px' }}>
+              <BarChart2 size={20} color="var(--primary-color)" />
+              <label style={{ fontSize: '14px', fontWeight: '700', whiteSpace: 'nowrap' }}>Filter Analytics:</label>
+              <select
+                value={selectedCampaignForAnalytics}
+                onChange={(e) => setSelectedCampaignForAnalytics(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', minWidth: '240px' }}
+              >
+                <option value="ALL">All Campaigns (Platform Overview)</option>
+                {campaigns.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title} ({c.campaign_type_display} - {c.status})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button onClick={loadAnalytics} className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <RefreshCw size={14} className={loadingAnalytics ? 'spin' : ''} />
+              Refresh Analytics
+            </button>
+          </div>
+
+          {loadingAnalytics ? (
+            <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
+              <RefreshCw className="spin" size={32} style={{ margin: '0 auto 12px' }} />
+              <p>Aggregating measurement and engagement data...</p>
+            </div>
+          ) : !analyticsData ? (
+            <div className="card" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              <AlertCircle size={40} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+              <p>No analytics data available for the selected scope.</p>
+            </div>
+          ) : (
+            <div>
+              {/* Key Performance Indicators */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                <div className="card" style={{ padding: '20px', borderLeft: '4px solid #6366f1' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Impressions</span>
+                    <Eye size={18} color="#6366f1" />
+                  </div>
+                  <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                    {analyticsData.total_impressions?.toLocaleString() || 0}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    {analyticsData.unique_viewers || 0} unique viewers
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '20px', borderLeft: '4px solid #10b981' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Clicks</span>
+                    <MousePointer size={18} color="#10b981" />
+                  </div>
+                  <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                    {analyticsData.total_clicks?.toLocaleString() || 0}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    User interactions & CTAs
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '20px', borderLeft: '4px solid #f59e0b' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Click-Through Rate</span>
+                    <TrendingUp size={18} color="#f59e0b" />
+                  </div>
+                  <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                    {analyticsData.click_through_rate !== undefined ? analyticsData.click_through_rate : analyticsData.overall_ctr || 0}%
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    Clicks / Impressions ratio
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '20px', borderLeft: '4px solid #8b5cf6' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Video Completions</span>
+                    <PlayCircle size={18} color="#8b5cf6" />
+                  </div>
+                  <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                    {analyticsData.video_metrics?.completion_rate || 0}%
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    {analyticsData.video_metrics?.completions || 0} / {analyticsData.video_metrics?.total_plays || 0} plays
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '20px', borderLeft: '4px solid #ec4899' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Avg Watch Time</span>
+                    <Clock size={18} color="#ec4899" />
+                  </div>
+                  <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                    {analyticsData.video_metrics?.average_watch_duration || 0}s
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    Average video duration
+                  </div>
+                </div>
+              </div>
+
+              {/* Specific Campaign Details View */}
+              {selectedCampaignForAnalytics !== 'ALL' && analyticsData.creatives_performance && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px', marginBottom: '24px' }}>
+                  {/* Creative Asset Performance */}
+                  <div className="card" style={{ padding: '20px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <ImageIcon size={18} color="var(--primary-color)" />
+                      Creative Asset Performance Breakdown
+                    </h3>
+                    {analyticsData.creatives_performance.length === 0 ? (
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>No creative asset telemetry recorded yet.</p>
+                    ) : (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
+                            <th style={{ padding: '10px' }}>Creative Asset</th>
+                            <th style={{ padding: '10px' }}>Type</th>
+                            <th style={{ padding: '10px' }}>Impressions</th>
+                            <th style={{ padding: '10px' }}>Clicks</th>
+                            <th style={{ padding: '10px' }}>CTR</th>
+                            <th style={{ padding: '10px' }}>Video Plays</th>
+                            <th style={{ padding: '10px' }}>Completion Rate</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {analyticsData.creatives_performance.map((c) => (
+                            <tr key={c.media_id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                              <td style={{ padding: '12px 10px', fontWeight: '700' }}>{c.title}</td>
+                              <td style={{ padding: '12px 10px' }}>
+                                <span className="badge badge-secondary">{c.media_type_display || c.media_type}</span>
+                              </td>
+                              <td style={{ padding: '12px 10px' }}>{c.impressions?.toLocaleString()}</td>
+                              <td style={{ padding: '12px 10px' }}>{c.clicks?.toLocaleString()}</td>
+                              <td style={{ padding: '12px 10px', fontWeight: '700', color: c.ctr > 0 ? '#10b981' : 'inherit' }}>
+                                {c.ctr}%
+                              </td>
+                              <td style={{ padding: '12px 10px' }}>{c.video_plays !== undefined ? c.video_plays : 'N/A'}</td>
+                              <td style={{ padding: '12px 10px' }}>
+                                {c.completion_rate !== undefined ? `${c.completion_rate}% (${c.avg_watch_duration}s avg)` : 'N/A'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+
+                  {/* 14-Day Timeline Breakdown */}
+                  {analyticsData.timeline && (
+                    <div className="card" style={{ padding: '20px' }}>
+                      <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Activity size={18} color="var(--primary-color)" />
+                        14-Day Activity & Impression Timeline
+                      </h3>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
+                            <th style={{ padding: '10px' }}>Date</th>
+                            <th style={{ padding: '10px' }}>Impressions</th>
+                            <th style={{ padding: '10px' }}>Clicks</th>
+                            <th style={{ padding: '10px' }}>Daily CTR</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {analyticsData.timeline.slice().reverse().map((t) => {
+                            const dailyCtr = t.impressions > 0 ? ((t.clicks / t.impressions) * 100).toFixed(2) : '0.00';
+                            return (
+                              <tr key={t.date} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                <td style={{ padding: '10px', fontWeight: '600' }}>{t.date}</td>
+                                <td style={{ padding: '10px' }}>{t.impressions}</td>
+                                <td style={{ padding: '10px' }}>{t.clicks}</td>
+                                <td style={{ padding: '10px', color: dailyCtr > 0 ? '#10b981' : 'inherit' }}>{dailyCtr}%</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Platform Overview Top Campaigns View */}
+              {selectedCampaignForAnalytics === 'ALL' && analyticsData.top_campaigns && (
+                <div className="card" style={{ padding: '20px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Layers size={18} color="var(--primary-color)" />
+                    Top Performing Campaigns
+                  </h3>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
+                        <th style={{ padding: '10px' }}>Campaign Title</th>
+                        <th style={{ padding: '10px' }}>Status</th>
+                        <th style={{ padding: '10px' }}>Impressions</th>
+                        <th style={{ padding: '10px' }}>Clicks</th>
+                        <th style={{ padding: '10px' }}>CTR</th>
+                        <th style={{ padding: '10px', textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analyticsData.top_campaigns.map((c) => (
+                        <tr key={c.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '12px 10px', fontWeight: '700' }}>{c.title}</td>
+                          <td style={{ padding: '12px 10px' }}>{renderStatusBadge(c.status)}</td>
+                          <td style={{ padding: '12px 10px' }}>{c.impressions?.toLocaleString()}</td>
+                          <td style={{ padding: '12px 10px' }}>{c.clicks?.toLocaleString()}</td>
+                          <td style={{ padding: '12px 10px', fontWeight: '700', color: c.ctr > 0 ? '#10b981' : 'inherit' }}>
+                            {c.ctr}%
+                          </td>
+                          <td style={{ padding: '12px 10px', textAlign: 'right' }}>
+                            <button
+                              onClick={() => setSelectedCampaignForAnalytics(c.id)}
+                              className="btn btn-secondary btn-sm"
+                            >
+                              View Campaign Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

@@ -1,27 +1,73 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/ad_placement_model.dart';
+import '../providers/advertisement_tracking_provider.dart';
 
-/// Modern, glassmorphic advertisement banner card for mobile surfaces (Home Feed, Header, Task Feed).
-class AdPlacementCard extends StatelessWidget {
+/// Modern, glassmorphic advertisement banner card for mobile surfaces with automatic impression & click telemetry.
+class AdPlacementCard extends ConsumerStatefulWidget {
   final AdPlacementModel placement;
   final VoidCallback? onTap;
   final double? height;
+  final bool autoRecordImpression;
 
   const AdPlacementCard({
     super.key,
     required this.placement,
     this.onTap,
     this.height = 140,
+    this.autoRecordImpression = true,
   });
+
+  @override
+  ConsumerState<AdPlacementCard> createState() => _AdPlacementCardState();
+}
+
+class _AdPlacementCardState extends ConsumerState<AdPlacementCard> {
+  bool _impressionRecorded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoRecordImpression) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _recordImpression();
+      });
+    }
+  }
+
+  void _recordImpression() {
+    if (_impressionRecorded) return;
+    _impressionRecorded = true;
+    final media = widget.placement.media;
+    if (media != null && media.id.isNotEmpty) {
+      ref.read(adTrackingNotifierProvider.notifier).recordImpression(
+            campaignId: widget.placement.campaignId,
+            placementId: widget.placement.id,
+            mediaId: media.id,
+          );
+    }
+  }
+
+  void _handleTap() {
+    final media = widget.placement.media;
+    if (media != null && media.id.isNotEmpty) {
+      ref.read(adTrackingNotifierProvider.notifier).recordClick(
+            campaignId: widget.placement.campaignId,
+            mediaId: media.id,
+            clickType: 'BANNER_CLICK',
+          );
+    }
+    widget.onTap?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final media = placement.media;
+    final media = widget.placement.media;
 
     return Container(
-      height: height,
+      height: widget.height,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -38,7 +84,7 @@ class AdPlacementCard extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: onTap,
+            onTap: _handleTap,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -93,7 +139,7 @@ class AdPlacementCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (placement.placementTypeDisplay.isNotEmpty)
+                          if (widget.placement.placementTypeDisplay.isNotEmpty)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
@@ -101,7 +147,7 @@ class AdPlacementCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                placement.placementTypeDisplay,
+                                widget.placement.placementTypeDisplay,
                                 style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 10,
@@ -120,7 +166,7 @@ class AdPlacementCard extends StatelessWidget {
                           Text(
                             media?.title.isNotEmpty == true
                                 ? media!.title
-                                : placement.campaignTitle,
+                                : widget.placement.campaignTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(

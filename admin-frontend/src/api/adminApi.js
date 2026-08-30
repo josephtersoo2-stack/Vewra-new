@@ -272,6 +272,16 @@ export const adminApi = {
     const res = await apiClient.get(`/ads/${placementType}/`, { params: { limit } });
     return res.data;
   },
+
+  // Campaign Tracking & Analytics (Phase 5.5 Step 4)
+  getCampaignAnalytics: async (campaignId) => {
+    const res = await apiClient.get(`/campaigns/${campaignId}/analytics/`);
+    return res.data;
+  },
+  getAdvertiserOverviewAnalytics: async () => {
+    const res = await apiClient.get('/advertiser/analytics/');
+    return res.data;
+  },
 };
 
 

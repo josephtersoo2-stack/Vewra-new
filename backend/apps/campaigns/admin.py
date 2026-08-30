@@ -190,3 +190,7 @@ class CampaignAdPlacementAdmin(admin.ModelAdmin):
     def restore_selected_placements(self, request, queryset):
         count = queryset.update(status=PlacementStatus.DRAFT)
         self.message_user(request, f"Successfully restored {count} advertisement placements.")
+
+
+# Register Phase 5.5 Step 4 tracking models into admin
+import apps.campaigns.tracking.admin  # noqa: F401

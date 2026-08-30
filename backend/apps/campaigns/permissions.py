@@ -10,15 +10,15 @@ def is_advertiser_capable(user) -> bool:
     """
     if not (user and user.is_authenticated):
         return False
-    if user.is_staff or getattr(user, 'is_superuser', False) or getattr(user, 'role', '') == 'admin':
+    if user.is_staff or getattr(user, 'is_superuser', False) or str(getattr(user, 'role', '')).lower() == 'admin':
         return True
-    if getattr(user, 'role', '') == 'advertiser':
+    if str(getattr(user, 'role', '')).lower() == 'advertiser':
         return True
     if getattr(user, 'is_advertiser', False):
         return True
     # Future extension point: advertiser verification / KYC check
     profile = getattr(user, 'profile', None)
-    if profile and (getattr(profile, 'is_advertiser', False) or getattr(profile, 'role', '') == 'advertiser'):
+    if profile and (getattr(profile, 'is_advertiser', False) or str(getattr(profile, 'role', '')).lower() == 'advertiser'):
         return True
     return False
 

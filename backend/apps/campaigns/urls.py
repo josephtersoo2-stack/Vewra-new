@@ -36,4 +36,6 @@ urlpatterns = [
     path("placements/", CampaignPlacementAllListView.as_view(), name="campaign-placements-all"),
     path("placement/<uuid:pk>/", CampaignPlacementDetailView.as_view(), name="campaign-placement-detail"),
     path("placement/<uuid:pk>/restore/", CampaignPlacementRestoreView.as_view(), name="campaign-placement-restore"),
+    # Analytics endpoints
+    path("<uuid:campaign_id>/analytics/", __import__("apps.campaigns.tracking.views", fromlist=["CampaignAnalyticsView"]).CampaignAnalyticsView.as_view(), name="campaign-analytics"),
 ]

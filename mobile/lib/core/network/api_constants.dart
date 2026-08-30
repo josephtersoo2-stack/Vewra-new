@@ -98,4 +98,11 @@ class ApiConstants {
   static const String allAdPlacements = '/ad-placements/';
   static String adPlacementDetail(String id) => '/ad-placement/$id/';
   static String adPlacementRestore(String id) => '/ad-placement/$id/restore/';
+
+  // Phase 5.5 Step 4: Tracking & Analytics Endpoints
+  static const String adRecordImpression = '/ads/impression/';
+  static const String adRecordClick = '/ads/click/';
+  static const String adRecordVideoProgress = '/ads/video-progress/';
+  static String campaignAnalytics(String campaignId) => '/campaigns/$campaignId/analytics/';
+  static const String advertiserAnalyticsOverview = '/advertiser/analytics/';
 }

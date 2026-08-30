@@ -232,3 +232,12 @@ class CampaignAdPlacement(models.Model):
     def __str__(self):
         return f"[{self.get_placement_type_display()}] {self.campaign.title} ({self.get_status_display()})"
 
+
+# Phase 5.5 Step 4: Advertisement Tracking and Analytics Models
+from apps.campaigns.tracking.models import (
+    ClickType,
+    AdvertisementImpression,
+    AdvertisementClick,
+    AdvertisementVideoEngagement,
+)
+
