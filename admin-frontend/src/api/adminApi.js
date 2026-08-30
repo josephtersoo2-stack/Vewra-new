@@ -238,5 +238,40 @@ export const adminApi = {
     const res = await apiClient.post(`/campaign-media/${id}/restore/`);
     return res.data;
   },
+
+  // Campaign Ad Placement Delivery (Phase 5.5 Step 3)
+  getCampaignPlacements: async (campaignId, params = {}) => {
+    const res = await apiClient.get(`/campaigns/${campaignId}/placements/`, { params });
+    return res.data;
+  },
+  createCampaignPlacement: async (campaignId, data) => {
+    const res = await apiClient.post(`/campaigns/${campaignId}/placements/`, data);
+    return res.data;
+  },
+  getAllAdPlacements: async (params = {}) => {
+    const res = await apiClient.get('/ad-placements/', { params });
+    return res.data;
+  },
+  getAdPlacementDetails: async (id) => {
+    const res = await apiClient.get(`/ad-placement/${id}/`);
+    return res.data;
+  },
+  updateAdPlacement: async (id, data) => {
+    const res = await apiClient.patch(`/ad-placement/${id}/`, data);
+    return res.data;
+  },
+  disableAdPlacement: async (id) => {
+    const res = await apiClient.delete(`/ad-placement/${id}/`);
+    return res.data;
+  },
+  restoreAdPlacement: async (id) => {
+    const res = await apiClient.post(`/ad-placement/${id}/restore/`);
+    return res.data;
+  },
+  getActiveAdsByLocation: async (placementType, limit = 10) => {
+    const res = await apiClient.get(`/ads/${placementType}/`, { params: { limit } });
+    return res.data;
+  },
 };
+
 

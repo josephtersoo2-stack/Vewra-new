@@ -1,18 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../campaigns/providers/ad_placement_provider.dart';
+import '../../campaigns/widgets/ad_placement_card.dart';
 
-/// Interactive high-converting Demo Ad Banner Widget for Vewra Home Feed.
-/// Replaces the static balance card with dynamic, visually stunning sponsor slots.
-class HomeAdSpotCard extends StatefulWidget {
+/// Interactive high-converting Ad Banner Widget for Vewra Home Feed.
+/// Dynamically delivers live server-placed campaign ads with elegant demo fallback.
+class HomeAdSpotCard extends ConsumerStatefulWidget {
   const HomeAdSpotCard({super.key});
 
   @override
-  State<HomeAdSpotCard> createState() => _HomeAdSpotCardState();
+  ConsumerState<HomeAdSpotCard> createState() => _HomeAdSpotCardState();
 }
 
-class _HomeAdSpotCardState extends State<HomeAdSpotCard> {
+class _HomeAdSpotCardState extends ConsumerState<HomeAdSpotCard> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   Timer? _carouselTimer;
@@ -256,6 +259,25 @@ class _HomeAdSpotCardState extends State<HomeAdSpotCard> {
 
   @override
   Widget build(BuildContext context) {
+    final liveAdsAsync = ref.watch(activeAdsByLocationProvider('HOME_FEED'));
+    final liveAds = liveAdsAsync.valueOrNull ?? [];
+
+    if (liveAds.isNotEmpty) {
+      return SizedBox(
+        height: 165,
+        child: PageView.builder(
+          itemCount: liveAds.length,
+          itemBuilder: (context, index) {
+            final placement = liveAds[index];
+            return AdPlacementCard(
+              placement: placement,
+              height: 165,
+            );
+          },
+        ),
+      );
+    }
+
     return Column(
       children: [
         SizedBox(

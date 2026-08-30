@@ -75,6 +75,9 @@ class MockCampaignRepository implements CampaignRepository {
     _campaigns[idx] = updated;
     return updated;
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {

@@ -9,6 +9,11 @@ from .views import (
     CampaignMediaListCreateView,
     CampaignMediaDetailView,
     CampaignMediaRestoreView,
+    CampaignPlacementListCreateView,
+    CampaignPlacementDetailView,
+    CampaignPlacementRestoreView,
+    CampaignPlacementAllListView,
+    ActiveAdsDeliveryView,
 )
 
 app_name = "campaigns"
@@ -26,4 +31,9 @@ urlpatterns = [
     path("<uuid:campaign_id>/media/upload/", CampaignMediaListCreateView.as_view(), name="campaign-media-upload"),
     path("media/<uuid:pk>/", CampaignMediaDetailView.as_view(), name="campaign-media-detail"),
     path("media/<uuid:pk>/restore/", CampaignMediaRestoreView.as_view(), name="campaign-media-restore"),
+    # Placement endpoints
+    path("<uuid:campaign_id>/placements/", CampaignPlacementListCreateView.as_view(), name="campaign-placement-list-create"),
+    path("placements/", CampaignPlacementAllListView.as_view(), name="campaign-placements-all"),
+    path("placement/<uuid:pk>/", CampaignPlacementDetailView.as_view(), name="campaign-placement-detail"),
+    path("placement/<uuid:pk>/restore/", CampaignPlacementRestoreView.as_view(), name="campaign-placement-restore"),
 ]

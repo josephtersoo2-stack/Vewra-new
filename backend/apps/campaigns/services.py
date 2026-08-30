@@ -4,7 +4,18 @@ from django.core.exceptions import ValidationError, PermissionDenied
 from django.utils import timezone
 from django.core.files.uploadedfile import UploadedFile
 
-from .models import Campaign, CampaignStatus, CampaignType, CampaignMedia, MediaType, MediaStatus
+from .models import (
+    Campaign,
+    CampaignStatus,
+    CampaignType,
+    CampaignMedia,
+    MediaType,
+    MediaStatus,
+    CampaignAdPlacement,
+    PlacementType,
+    PlacementStatus,
+)
+from django.db import models
 from .permissions import is_advertiser_capable
 from .media_services import MediaValidationService
 
@@ -277,3 +288,277 @@ class CampaignMediaService:
             qs = qs.filter(status=status.upper())
 
         return qs
+
+
+class CampaignAdDeliveryService:
+    """
+    Core domain service managing advertisement placements, surface routing,
+    priority weighting, and server-authoritative ad delivery.
+    """
+
+    @staticmethod
+    def create_placement(
+        user,
+        campaign_id,
+        media_id,
+        placement_type: str,
+        priority: int = 10,
+        start_date=None,
+        end_date=None,
+        status: str = PlacementStatus.DRAFT,
+    ) -> CampaignAdPlacement:
+        """
+        Creates an advertisement placement linking approved campaign media to a surface.
+        Validates ownership, capability, media ownership, and READY media status.
+        """
+        is_admin = user.is_staff or getattr(user, "role", "") == "admin" or getattr(user, "is_superuser", False)
+        if not is_advertiser_capable(user) and not is_admin:
+            raise PermissionDenied("Only verified advertiser accounts or administrators can create advertisement placements.")
+
+        try:
+            campaign = Campaign.objects.get(id=campaign_id)
+        except (Campaign.DoesNotExist, ValueError):
+            raise ValidationError({"campaign": f"Campaign '{campaign_id}' does not exist."})
+
+        if campaign.owner != user and not is_admin:
+            raise PermissionDenied("You do not own this campaign and cannot create placements for it.")
+
+        try:
+            media = CampaignMedia.objects.get(id=media_id)
+        except (CampaignMedia.DoesNotExist, ValueError):
+            raise ValidationError({"media": f"Media asset '{media_id}' does not exist."})
+
+        if media.campaign_id != campaign.id:
+            raise ValidationError({"media": "Selected media asset does not belong to this campaign."})
+
+        if media.status != MediaStatus.READY:
+            raise ValidationError({"media": f"Cannot attach media in status '{media.status}'. Only READY media assets can be attached."})
+
+        if placement_type not in PlacementType.values:
+            raise ValidationError({"placement_type": f"Invalid placement type: '{placement_type}'."})
+
+        if status not in PlacementStatus.values:
+            raise ValidationError({"status": f"Invalid placement status: '{status}'."})
+
+        if start_date and end_date and end_date <= start_date:
+            raise ValidationError({"end_date": "End date must be after start date."})
+
+        # If created directly as ACTIVE, campaign must be ACTIVE
+        if status == PlacementStatus.ACTIVE:
+            if campaign.status != CampaignStatus.ACTIVE:
+                raise ValidationError({"status": f"Cannot create active placement: Campaign is in '{campaign.status}' status (must be ACTIVE)."})
+            if end_date and end_date < timezone.now():
+                raise ValidationError({"end_date": "Cannot activate placement: End date is in the past."})
+
+        placement = CampaignAdPlacement.objects.create(
+            campaign=campaign,
+            media=media,
+            placement_type=placement_type,
+            status=status,
+            priority=priority,
+            start_date=start_date,
+            end_date=end_date,
+            created_by=user,
+        )
+        return placement
+
+    @staticmethod
+    def activate_placement(user, placement: CampaignAdPlacement) -> CampaignAdPlacement:
+        """
+        Activates an advertisement placement.
+        Validates campaign ACTIVE status, media READY status, and validity dates.
+        """
+        is_admin = user.is_staff or getattr(user, "role", "") == "admin" or getattr(user, "is_superuser", False)
+        if placement.campaign.owner != user and not is_admin:
+            raise PermissionDenied("You do not have permission to activate this placement.")
+
+        if placement.campaign.status != CampaignStatus.ACTIVE:
+            raise ValidationError(
+                f"Cannot activate placement: Campaign is in '{placement.campaign.status}' status (must be ACTIVE)."
+            )
+
+        if placement.media.status != MediaStatus.READY:
+            raise ValidationError(
+                f"Cannot activate placement: Attached media is in '{placement.media.status}' status (must be READY)."
+            )
+
+        now = timezone.now()
+        if placement.end_date and placement.end_date < now:
+            raise ValidationError("Cannot activate placement: End date has already expired.")
+
+        placement.status = PlacementStatus.ACTIVE
+        if not placement.start_date:
+            placement.start_date = now
+        placement.save(update_fields=["status", "start_date", "updated_at"])
+        return placement
+
+    @staticmethod
+    def pause_placement(user, placement: CampaignAdPlacement) -> CampaignAdPlacement:
+        """
+        Pauses an ACTIVE advertisement placement.
+        """
+        is_admin = user.is_staff or getattr(user, "role", "") == "admin" or getattr(user, "is_superuser", False)
+        if placement.campaign.owner != user and not is_admin:
+            raise PermissionDenied("You do not have permission to pause this placement.")
+
+        if placement.status not in [PlacementStatus.ACTIVE, PlacementStatus.DRAFT]:
+            raise ValidationError(f"Cannot pause placement in status '{placement.status}'.")
+
+        placement.status = PlacementStatus.PAUSED
+        placement.save(update_fields=["status", "updated_at"])
+        return placement
+
+    @staticmethod
+    def disable_placement(user, placement: CampaignAdPlacement) -> CampaignAdPlacement:
+        """
+        Soft-disables an advertisement placement.
+        """
+        is_admin = user.is_staff or getattr(user, "role", "") == "admin" or getattr(user, "is_superuser", False)
+        if placement.campaign.owner != user and not is_admin:
+            raise PermissionDenied("You do not have permission to disable this placement.")
+
+        placement.status = PlacementStatus.DISABLED
+        placement.save(update_fields=["status", "updated_at"])
+        return placement
+
+    @staticmethod
+    def restore_placement(user, placement: CampaignAdPlacement) -> CampaignAdPlacement:
+        """
+        Restores a disabled advertisement placement back to DRAFT or ACTIVE.
+        """
+        is_admin = user.is_staff or getattr(user, "role", "") == "admin" or getattr(user, "is_superuser", False)
+        if placement.campaign.owner != user and not is_admin:
+            raise PermissionDenied("You do not have permission to restore this placement.")
+
+        if placement.campaign.status == CampaignStatus.ACTIVE and placement.media.status == MediaStatus.READY:
+            placement.status = PlacementStatus.ACTIVE
+        else:
+            placement.status = PlacementStatus.DRAFT
+
+        placement.save(update_fields=["status", "updated_at"])
+        return placement
+
+    @staticmethod
+    def update_placement(
+        user,
+        placement: CampaignAdPlacement,
+        placement_type: Optional[str] = None,
+        media_id: Optional[str] = None,
+        priority: Optional[int] = None,
+        start_date=None,
+        end_date=None,
+        status: Optional[str] = None,
+    ) -> CampaignAdPlacement:
+        """
+        Updates an existing advertisement placement.
+        """
+        is_admin = user.is_staff or getattr(user, "role", "") == "admin" or getattr(user, "is_superuser", False)
+        if placement.campaign.owner != user and not is_admin:
+            raise PermissionDenied("You do not have permission to modify this placement.")
+
+        update_fields = ["updated_at"]
+
+        if placement_type is not None:
+            if placement_type not in PlacementType.values:
+                raise ValidationError({"placement_type": f"Invalid placement type '{placement_type}'."})
+            placement.placement_type = placement_type
+            update_fields.append("placement_type")
+
+        if media_id is not None:
+            try:
+                media = CampaignMedia.objects.get(id=media_id)
+            except (CampaignMedia.DoesNotExist, ValueError):
+                raise ValidationError({"media": f"Media asset '{media_id}' does not exist."})
+            if media.campaign_id != placement.campaign_id:
+                raise ValidationError({"media": "Selected media asset does not belong to this campaign."})
+            if media.status != MediaStatus.READY:
+                raise ValidationError({"media": f"Cannot attach media in status '{media.status}'. Must be READY."})
+            placement.media = media
+            update_fields.append("media")
+
+        if priority is not None:
+            placement.priority = int(priority)
+            update_fields.append("priority")
+
+        if start_date is not None:
+            placement.start_date = start_date
+            update_fields.append("start_date")
+
+        if end_date is not None:
+            placement.end_date = end_date
+            update_fields.append("end_date")
+
+        if status is not None:
+            if status == PlacementStatus.ACTIVE:
+                CampaignAdDeliveryService.activate_placement(user, placement)
+                return placement
+            elif status == PlacementStatus.PAUSED:
+                CampaignAdDeliveryService.pause_placement(user, placement)
+                return placement
+            elif status == PlacementStatus.DISABLED:
+                CampaignAdDeliveryService.disable_placement(user, placement)
+                return placement
+            elif status == PlacementStatus.DRAFT:
+                placement.status = PlacementStatus.DRAFT
+                update_fields.append("status")
+            else:
+                raise ValidationError({"status": f"Invalid placement status '{status}'."})
+
+        placement.save(update_fields=update_fields)
+        return placement
+
+    @staticmethod
+    def get_active_ads_by_location(placement_type: str, limit: int = 10):
+        """
+        Server-authoritative delivery engine for approved ads on application surfaces.
+        Only returns active placements for active campaigns with READY media.
+        """
+        if placement_type.upper() not in PlacementType.values:
+            raise ValidationError(f"Invalid placement type '{placement_type}'.")
+
+        now = timezone.now()
+        qs = (
+            CampaignAdPlacement.objects.filter(
+                placement_type=placement_type.upper(),
+                status=PlacementStatus.ACTIVE,
+                campaign__status=CampaignStatus.ACTIVE,
+                media__status=MediaStatus.READY,
+            )
+            .filter(models.Q(start_date__isnull=True) | models.Q(start_date__lte=now))
+            .filter(models.Q(end_date__isnull=True) | models.Q(end_date__gte=now))
+            .select_related("campaign", "media", "campaign__owner")
+            .order_by("-priority", "-created_at")[:limit]
+        )
+        return qs
+
+    @staticmethod
+    def list_campaign_placements(
+        user,
+        campaign_id: Optional[str] = None,
+        placement_type: Optional[str] = None,
+        status: Optional[str] = None,
+    ):
+        """
+        Lists placements with tenant isolation.
+        Advertisers only see placements for their own campaigns.
+        Admins can inspect placements across all campaigns.
+        """
+        is_admin = user and (user.is_staff or getattr(user, "role", "") == "admin")
+        qs = CampaignAdPlacement.objects.all().select_related("campaign", "media", "created_by", "campaign__owner")
+
+        if campaign_id:
+            qs = qs.filter(campaign_id=campaign_id)
+
+        if not is_admin:
+            if not user or not user.is_authenticated:
+                raise PermissionDenied("Authentication required to list campaign placements.")
+            qs = qs.filter(campaign__owner=user)
+
+        if placement_type and placement_type.upper() in PlacementType.values:
+            qs = qs.filter(placement_type=placement_type.upper())
+
+        if status and status.upper() in PlacementStatus.values:
+            qs = qs.filter(status=status.upper())
+
+        return qs
+

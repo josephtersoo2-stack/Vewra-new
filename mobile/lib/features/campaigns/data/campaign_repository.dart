@@ -1,4 +1,5 @@
 import '../models/campaign_model.dart';
+import '../models/ad_placement_model.dart';
 import 'campaign_api_service.dart';
 
 class CampaignRepository {
@@ -47,5 +48,43 @@ class CampaignRepository {
 
   Future<CampaignModel> pauseCampaign(String id) async {
     return await _apiService.pauseCampaign(id);
+  }
+
+  // Phase 5.5 Step 3: Advertisement Delivery & Placements
+  Future<List<AdPlacementModel>> getActiveAdsByLocation(
+    String placementType, {
+    int limit = 10,
+  }) async {
+    return await _apiService.getActiveAdsByLocation(placementType, limit: limit);
+  }
+
+  Future<List<AdPlacementModel>> getCampaignPlacements(
+    String campaignId, {
+    String? status,
+    String? type,
+  }) async {
+    return await _apiService.getCampaignPlacements(campaignId, status: status, type: type);
+  }
+
+  Future<AdPlacementModel> createCampaignPlacement(
+    String campaignId,
+    Map<String, dynamic> data,
+  ) async {
+    return await _apiService.createCampaignPlacement(campaignId, data);
+  }
+
+  Future<AdPlacementModel> updateCampaignPlacement(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    return await _apiService.updateCampaignPlacement(id, data);
+  }
+
+  Future<AdPlacementModel> disableCampaignPlacement(String id) async {
+    return await _apiService.disableCampaignPlacement(id);
+  }
+
+  Future<AdPlacementModel> restoreCampaignPlacement(String id) async {
+    return await _apiService.restoreCampaignPlacement(id);
   }
 }

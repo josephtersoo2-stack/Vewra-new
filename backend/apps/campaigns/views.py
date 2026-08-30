@@ -4,7 +4,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.shortcuts import get_object_or_404
 
-from .models import Campaign, CampaignMedia
+from .models import Campaign, CampaignMedia, CampaignAdPlacement, PlacementType, PlacementStatus
 from .serializers import (
     CampaignSerializer,
     CampaignCreateSerializer,
@@ -12,14 +12,20 @@ from .serializers import (
     CampaignMediaSerializer,
     CampaignMediaUploadSerializer,
     CampaignMediaUpdateSerializer,
+    CampaignAdPlacementSerializer,
+    CampaignAdPlacementCreateSerializer,
+    CampaignAdPlacementUpdateSerializer,
+    ActiveAdDeliverySerializer,
 )
-from .services import CampaignService, CampaignMediaService
+from .services import CampaignService, CampaignMediaService, CampaignAdDeliveryService
 from .selectors import list_campaigns, get_campaign_by_id
 from .permissions import (
     IsCampaignOwner,
     IsAdminCampaignManager,
     CanCreateCampaign,
     IsCampaignMediaOwnerOrAdmin,
+    IsCampaignPlacementOwnerOrAdmin,
+    is_advertiser_capable,
 )
 
 
@@ -332,3 +338,208 @@ class CampaignMediaRestoreView(views.APIView):
             }, status=status.HTTP_200_OK)
         except PermissionDenied as e:
             return Response({"success": False, "error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+
+class ActiveAdsDeliveryView(views.APIView):
+    """
+    GET /api/v1/ads/<placement_type>/ - Public/client delivery endpoint
+    returning active, approved advertisements for a given placement location.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, placement_type):
+        limit = int(request.query_params.get("limit", 10))
+        try:
+            ads_qs = CampaignAdDeliveryService.get_active_ads_by_location(
+                placement_type=placement_type,
+                limit=limit,
+            )
+            serializer = ActiveAdDeliverySerializer(ads_qs, many=True, context={"request": request})
+            return Response({
+                "success": True,
+                "placement_type": placement_type.upper(),
+                "count": len(serializer.data),
+                "ads": serializer.data,
+                "results": serializer.data,
+            }, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({"success": False, "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CampaignPlacementListCreateView(views.APIView):
+    """
+    GET /api/v1/campaigns/<uuid:campaign_id>/placements/ - List placements for a campaign.
+    POST /api/v1/campaigns/<uuid:campaign_id>/placements/ - Create new placement for a campaign.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, campaign_id):
+        campaign = get_object_or_404(Campaign, pk=campaign_id)
+        is_admin = request.user.is_staff or getattr(request.user, "role", "") == "admin"
+        if campaign.owner != request.user and not is_admin:
+            raise PermissionDenied("You do not have permission to view placements for this campaign.")
+
+        placement_type = request.query_params.get("type") or request.query_params.get("placement_type")
+        status_filter = request.query_params.get("status")
+
+        try:
+            placements = CampaignAdDeliveryService.list_campaign_placements(
+                user=request.user,
+                campaign_id=str(campaign.id),
+                placement_type=placement_type,
+                status=status_filter,
+            )
+            serializer = CampaignAdPlacementSerializer(placements, many=True, context={"request": request})
+            return Response({
+                "success": True,
+                "count": placements.count(),
+                "placements": serializer.data,
+                "results": serializer.data,
+            }, status=status.HTTP_200_OK)
+        except PermissionDenied as e:
+            return Response({"success": False, "error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+    def post(self, request, campaign_id):
+        if not is_advertiser_capable(request.user):
+            return Response({
+                "success": False,
+                "error": "Only verified advertiser accounts or administrators can create advertisement placements.",
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = CampaignAdPlacementCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            placement = CampaignAdDeliveryService.create_placement(
+                user=request.user,
+                campaign_id=campaign_id,
+                media_id=str(data["media_id"]),
+                placement_type=data.get("placement_type", PlacementType.HOME_FEED),
+                priority=data.get("priority", 10),
+                start_date=data.get("start_date"),
+                end_date=data.get("end_date"),
+                status=data.get("status", PlacementStatus.DRAFT),
+            )
+            return Response({
+                "success": True,
+                "message": "Advertisement placement created successfully.",
+                "placement": CampaignAdPlacementSerializer(placement, context={"request": request}).data,
+            }, status=status.HTTP_201_CREATED)
+        except (ValidationError, PermissionDenied) as e:
+            return Response({
+                "success": False,
+                "error": getattr(e, "message_dict", getattr(e, "message", str(e))),
+            }, status=status.HTTP_400_BAD_REQUEST if isinstance(e, ValidationError) else status.HTTP_403_FORBIDDEN)
+
+
+class CampaignPlacementDetailView(views.APIView):
+    """
+    GET /api/v1/ad-placement/<uuid:pk>/ - Retrieve placement.
+    PATCH /api/v1/ad-placement/<uuid:pk>/ - Update placement.
+    DELETE /api/v1/ad-placement/<uuid:pk>/ - Soft-disable placement.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsCampaignPlacementOwnerOrAdmin]
+
+    def get(self, request, pk):
+        placement = get_object_or_404(CampaignAdPlacement, pk=pk)
+        self.check_object_permissions(request, placement)
+        return Response({
+            "success": True,
+            "placement": CampaignAdPlacementSerializer(placement, context={"request": request}).data,
+        }, status=status.HTTP_200_OK)
+
+    def patch(self, request, pk):
+        placement = get_object_or_404(CampaignAdPlacement, pk=pk)
+        self.check_object_permissions(request, placement)
+
+        serializer = CampaignAdPlacementUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            updated = CampaignAdDeliveryService.update_placement(
+                user=request.user,
+                placement=placement,
+                placement_type=data.get("placement_type"),
+                media_id=str(data["media_id"]) if "media_id" in data else None,
+                priority=data.get("priority"),
+                start_date=data.get("start_date"),
+                end_date=data.get("end_date"),
+                status=data.get("status"),
+            )
+            return Response({
+                "success": True,
+                "message": "Advertisement placement updated successfully.",
+                "placement": CampaignAdPlacementSerializer(updated, context={"request": request}).data,
+            }, status=status.HTTP_200_OK)
+        except (ValidationError, PermissionDenied) as e:
+            return Response({
+                "success": False,
+                "error": getattr(e, "message_dict", getattr(e, "message", str(e))),
+            }, status=status.HTTP_400_BAD_REQUEST if isinstance(e, ValidationError) else status.HTTP_403_FORBIDDEN)
+
+    def delete(self, request, pk):
+        placement = get_object_or_404(CampaignAdPlacement, pk=pk)
+        self.check_object_permissions(request, placement)
+
+        try:
+            disabled = CampaignAdDeliveryService.disable_placement(user=request.user, placement=placement)
+            return Response({
+                "success": True,
+                "message": "Advertisement placement disabled successfully.",
+                "placement": CampaignAdPlacementSerializer(disabled, context={"request": request}).data,
+            }, status=status.HTTP_200_OK)
+        except (ValidationError, PermissionDenied) as e:
+            return Response({"success": False, "error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+
+class CampaignPlacementRestoreView(views.APIView):
+    """
+    POST /api/v1/ad-placement/<uuid:pk>/restore/ - Restore disabled placement.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsCampaignPlacementOwnerOrAdmin]
+
+    def post(self, request, pk):
+        placement = get_object_or_404(CampaignAdPlacement, pk=pk)
+        self.check_object_permissions(request, placement)
+
+        try:
+            restored = CampaignAdDeliveryService.restore_placement(user=request.user, placement=placement)
+            return Response({
+                "success": True,
+                "message": "Advertisement placement restored successfully.",
+                "placement": CampaignAdPlacementSerializer(restored, context={"request": request}).data,
+            }, status=status.HTTP_200_OK)
+        except (ValidationError, PermissionDenied) as e:
+            return Response({"success": False, "error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+
+class CampaignPlacementAllListView(views.APIView):
+    """
+    GET /api/v1/ad-placements/ - List all placements with filters (location, status, campaign).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        campaign_id = request.query_params.get("campaign_id")
+        placement_type = request.query_params.get("type") or request.query_params.get("placement_type")
+        status_filter = request.query_params.get("status")
+
+        try:
+            placements = CampaignAdDeliveryService.list_campaign_placements(
+                user=request.user,
+                campaign_id=campaign_id,
+                placement_type=placement_type,
+                status=status_filter,
+            )
+            serializer = CampaignAdPlacementSerializer(placements, many=True, context={"request": request})
+            return Response({
+                "success": True,
+                "count": placements.count(),
+                "placements": serializer.data,
+                "results": serializer.data,
+            }, status=status.HTTP_200_OK)
+        except PermissionDenied as e:
+            return Response({"success": False, "error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+

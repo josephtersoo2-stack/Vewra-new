@@ -91,4 +91,11 @@ class ApiConstants {
   static String campaignMediaUpload(String campaignId) => '/campaigns/$campaignId/media/upload/';
   static String campaignMediaDetail(String mediaId) => '/campaign-media/$mediaId/';
   static String campaignMediaRestore(String mediaId) => '/campaign-media/$mediaId/restore/';
+
+  // Phase 5.5 Step 3: Advertisement Delivery & Placements
+  static String activeAdsByLocation(String placementType) => '/ads/$placementType/';
+  static String campaignPlacements(String campaignId) => '/campaigns/$campaignId/placements/';
+  static const String allAdPlacements = '/ad-placements/';
+  static String adPlacementDetail(String id) => '/ad-placement/$id/';
+  static String adPlacementRestore(String id) => '/ad-placement/$id/restore/';
 }

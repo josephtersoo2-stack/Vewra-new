@@ -19,6 +19,8 @@ import {
   Trash2,
   RotateCcw,
   Upload,
+  Radio,
+  PlayCircle,
 } from 'lucide-react';
 import { adminApi } from '../api/adminApi';
 
@@ -61,6 +63,23 @@ export function CampaignsPage() {
     file: null,
   });
 
+  // Advertisement Placements State (Phase 5.5 Step 3)
+  const [adPlacements, setAdPlacements] = useState([]);
+  const [loadingPlacements, setLoadingPlacements] = useState(false);
+  const [placementTypeFilter, setPlacementTypeFilter] = useState('ALL');
+  const [placementStatusFilter, setPlacementStatusFilter] = useState('ALL');
+  const [isPlacementModalOpen, setIsPlacementModalOpen] = useState(false);
+  const [readyMediaForPlacement, setReadyMediaForPlacement] = useState([]);
+  const [placementForm, setPlacementForm] = useState({
+    campaignId: '',
+    media_id: '',
+    placement_type: 'HOME_FEED',
+    priority: 10,
+    status: 'ACTIVE',
+    start_date: '',
+    end_date: '',
+  });
+
   const loadCampaigns = async () => {
     try {
       setLoading(true);
@@ -96,9 +115,50 @@ export function CampaignsPage() {
     }
   };
 
+  const loadAdPlacements = async () => {
+    try {
+      setLoadingPlacements(true);
+      const params = {};
+      if (placementTypeFilter !== 'ALL') params.type = placementTypeFilter;
+      if (placementStatusFilter !== 'ALL') params.status = placementStatusFilter;
+
+      const res = await adminApi.getAllAdPlacements(params);
+      setAdPlacements(res.placements || res.results || []);
+    } catch (err) {
+      console.error('Failed to load ad placements:', err);
+    } finally {
+      setLoadingPlacements(false);
+    }
+  };
+
+  const loadReadyMediaForPlacement = async (campaignId) => {
+    if (!campaignId) {
+      setReadyMediaForPlacement([]);
+      return;
+    }
+    try {
+      const res = await adminApi.getCampaignMedia(campaignId, { status: 'READY' });
+      const ready = res.media || res.results || [];
+      setReadyMediaForPlacement(ready);
+      if (ready.length > 0) {
+        setPlacementForm((prev) => ({ ...prev, media_id: ready[0].id }));
+      } else {
+        setPlacementForm((prev) => ({ ...prev, media_id: '' }));
+      }
+    } catch (err) {
+      console.error('Failed to load ready media for placement:', err);
+    }
+  };
+
   useEffect(() => {
     loadCampaigns();
   }, [activeType, statusFilter]);
+
+  useEffect(() => {
+    if (activeTab === 'placements') {
+      loadAdPlacements();
+    }
+  }, [activeTab, placementTypeFilter, placementStatusFilter]);
 
   useEffect(() => {
     if (campaigns.length > 0 && !selectedCampaignForMedia) {
@@ -228,6 +288,85 @@ export function CampaignsPage() {
     }
   };
 
+  // Placement Action Handlers (Phase 5.5 Step 3)
+  const handleCreatePlacement = async (e) => {
+    e.preventDefault();
+    if (!placementForm.campaignId) {
+      alert('Please select a campaign.');
+      return;
+    }
+    if (!placementForm.media_id) {
+      alert('Please select an active media asset.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const payload = {
+        media_id: placementForm.media_id,
+        placement_type: placementForm.placement_type,
+        priority: parseInt(placementForm.priority, 10) || 10,
+        status: placementForm.status,
+      };
+      if (placementForm.start_date) payload.start_date = new Date(placementForm.start_date).toISOString();
+      if (placementForm.end_date) payload.end_date = new Date(placementForm.end_date).toISOString();
+
+      await adminApi.createCampaignPlacement(placementForm.campaignId, payload);
+      setIsPlacementModalOpen(false);
+      setPlacementForm({
+        campaignId: '',
+        media_id: '',
+        placement_type: 'HOME_FEED',
+        priority: 10,
+        status: 'ACTIVE',
+        start_date: '',
+        end_date: '',
+      });
+      await loadAdPlacements();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to create advertisement placement.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleActivatePlacement = async (id) => {
+    try {
+      await adminApi.updateAdPlacement(id, { status: 'ACTIVE' });
+      await loadAdPlacements();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to activate placement.');
+    }
+  };
+
+  const handlePausePlacement = async (id) => {
+    try {
+      await adminApi.updateAdPlacement(id, { status: 'PAUSED' });
+      await loadAdPlacements();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to pause placement.');
+    }
+  };
+
+  const handleDisablePlacement = async (id) => {
+    if (!window.confirm('Disable this ad placement? It will stop being delivered on user surfaces.')) return;
+    try {
+      await adminApi.disableAdPlacement(id);
+      await loadAdPlacements();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to disable placement.');
+    }
+  };
+
+  const handleRestorePlacement = async (id) => {
+    try {
+      await adminApi.restoreAdPlacement(id);
+      await loadAdPlacements();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to restore placement.');
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'ACTIVE':
@@ -268,6 +407,20 @@ export function CampaignsPage() {
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
             onClick={() => {
+              const campId = selectedCampaignForMedia || (campaigns[0]?.id || '');
+              setPlacementForm((prev) => ({ ...prev, campaignId: campId }));
+              loadReadyMediaForPlacement(campId);
+              setIsPlacementModalOpen(true);
+            }}
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Radio size={18} />
+            Assign Ad Placement
+          </button>
+
+          <button
+            onClick={() => {
               setMediaUploadForm((prev) => ({ ...prev, campaignId: selectedCampaignForMedia || (campaigns[0]?.id || '') }));
               setIsUploadMediaModalOpen(true);
             }}
@@ -290,11 +443,12 @@ export function CampaignsPage() {
       </div>
 
       {/* Submenu Navigation Tabs */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color)', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color)', marginBottom: '24px', overflowX: 'auto' }}>
         {[
           { key: 'overview', label: 'Campaign Overview', icon: Layers },
           { key: 'list', label: 'Campaign List', icon: FileText },
           { key: 'media', label: 'Campaign Media', icon: ImageIcon },
+          { key: 'placements', label: 'Ad Placements', icon: Radio },
           { key: 'pending_media', label: 'Pending Media Review', icon: Clock },
           { key: 'disabled_media', label: 'Disabled Media', icon: XCircle },
         ].map((tab) => {
@@ -672,6 +826,303 @@ export function CampaignsPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Advertisement Placements Tab (Phase 5.5 Step 3) */}
+      {activeTab === 'placements' && (
+        <div>
+          {/* Filter & Controls Bar */}
+          <div className="card" style={{ padding: '16px', marginBottom: '20px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>Surface Location:</span>
+                <select
+                  value={placementTypeFilter}
+                  onChange={(e) => setPlacementTypeFilter(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                >
+                  <option value="ALL">All Locations</option>
+                  <option value="HOME_FEED">Home Feed</option>
+                  <option value="HEADER">Header Banner</option>
+                  <option value="FOOTER">Footer Banner</option>
+                  <option value="POPUP">Popup Modal</option>
+                  <option value="VIDEO_PREROLL">Video Pre-Roll</option>
+                  <option value="TASK_FEED">Task Feed</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>Status:</span>
+                <select
+                  value={placementStatusFilter}
+                  onChange={(e) => setPlacementStatusFilter(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="PAUSED">Paused</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="DISABLED">Disabled</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={loadAdPlacements} className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <RefreshCw size={14} /> Refresh
+              </button>
+              <button
+                onClick={() => {
+                  const campId = selectedCampaignForMedia || (campaigns[0]?.id || '');
+                  setPlacementForm((prev) => ({ ...prev, campaignId: campId }));
+                  loadReadyMediaForPlacement(campId);
+                  setIsPlacementModalOpen(true);
+                }}
+                className="btn btn-primary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Plus size={14} /> New Placement
+              </button>
+            </div>
+          </div>
+
+          {/* Placements List */}
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            {loadingPlacements ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <RefreshCw size={24} className="spin" style={{ margin: '0 auto 12px' }} />
+                Loading advertisement placements...
+              </div>
+            ) : adPlacements.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <Radio size={32} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+                <div>No advertisement placements found.</div>
+                <button
+                  onClick={() => {
+                    const campId = selectedCampaignForMedia || (campaigns[0]?.id || '');
+                    setPlacementForm((prev) => ({ ...prev, campaignId: campId }));
+                    loadReadyMediaForPlacement(campId);
+                    setIsPlacementModalOpen(true);
+                  }}
+                  className="btn btn-primary"
+                  style={{ marginTop: '16px' }}
+                >
+                  <Plus size={16} /> Assign First Placement
+                </button>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                    <th style={{ padding: '14px 16px' }}>Surface Placement</th>
+                    <th style={{ padding: '14px 16px' }}>Priority</th>
+                    <th style={{ padding: '14px 16px' }}>Creative Asset</th>
+                    <th style={{ padding: '14px 16px' }}>Campaign</th>
+                    <th style={{ padding: '14px 16px' }}>Validity Window</th>
+                    <th style={{ padding: '14px 16px' }}>Status</th>
+                    <th style={{ padding: '14px 16px', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {adPlacements.map((p) => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span className="badge badge-primary" style={{ fontWeight: '700' }}>
+                          {p.placement_type_display || p.placement_type}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{ fontWeight: '700', padding: '3px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+                          P-{p.priority}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {p.media_details?.file_url ? (
+                            <img
+                              src={p.media_details.file_url}
+                              alt=""
+                              style={{ width: '36px', height: '36px', borderRadius: '6px', objectFit: 'cover' }}
+                            />
+                          ) : (
+                            <div style={{ width: '36px', height: '36px', borderRadius: '6px', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <ImageIcon size={18} color="var(--text-secondary)" />
+                            </div>
+                          )}
+                          <div>
+                            <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{p.media_details?.title || 'Creative Asset'}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{p.media_details?.media_type_display || 'Media'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontWeight: '600' }}>{p.campaign_title}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Status: {p.campaign_status}</div>
+                      </td>
+                      <td style={{ padding: '14px 16px', color: 'var(--text-secondary)', fontSize: '12px' }}>
+                        {p.start_date || p.end_date ? (
+                          <>
+                            {p.start_date ? new Date(p.start_date).toLocaleDateString() : 'Now'} - {p.end_date ? new Date(p.end_date).toLocaleDateString() : 'Ongoing'}
+                          </>
+                        ) : (
+                          'Continuous / Always Active'
+                        )}
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        {getStatusBadge(p.status)}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                          {p.status === 'ACTIVE' ? (
+                            <button onClick={() => handlePausePlacement(p.id)} className="btn btn-secondary btn-sm" title="Pause Placement">
+                              <PauseCircle size={14} /> Pause
+                            </button>
+                          ) : p.status === 'PAUSED' || p.status === 'DRAFT' ? (
+                            <button onClick={() => handleActivatePlacement(p.id)} className="btn btn-success btn-sm" title="Activate Placement">
+                              <PlayCircle size={14} /> Activate
+                            </button>
+                          ) : null}
+
+                          {p.status !== 'DISABLED' ? (
+                            <button onClick={() => handleDisablePlacement(p.id)} className="btn btn-danger btn-sm" title="Disable Placement">
+                              <Trash2 size={14} />
+                            </button>
+                          ) : (
+                            <button onClick={() => handleRestorePlacement(p.id)} className="btn btn-success btn-sm" title="Restore Placement">
+                              <RotateCcw size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Create Ad Placement Modal */}
+      {isPlacementModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="card" style={{ width: '560px', maxWidth: '90%', padding: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '16px' }}>Assign Advertisement Placement</h2>
+            <form onSubmit={handleCreatePlacement}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Target Campaign</label>
+                <select
+                  value={placementForm.campaignId}
+                  onChange={(e) => {
+                    const campId = e.target.value;
+                    setPlacementForm({ ...placementForm, campaignId: campId });
+                    loadReadyMediaForPlacement(campId);
+                  }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                >
+                  {campaigns.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title} ({c.campaign_type_display} - {c.status})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Select Ready Creative Asset</label>
+                {readyMediaForPlacement.length === 0 ? (
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px' }}>
+                    No READY media found for this campaign. Upload and review media first.
+                  </div>
+                ) : (
+                  <select
+                    value={placementForm.media_id}
+                    onChange={(e) => setPlacementForm({ ...placementForm, media_id: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  >
+                    {readyMediaForPlacement.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.title} ({m.media_type_display} - {m.file_size_formatted || `${m.file_size} B`})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Surface Location</label>
+                  <select
+                    value={placementForm.placement_type}
+                    onChange={(e) => setPlacementForm({ ...placementForm, placement_type: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="HOME_FEED">Home Feed</option>
+                    <option value="HEADER">Header Banner</option>
+                    <option value="FOOTER">Footer Banner</option>
+                    <option value="POPUP">Popup Modal</option>
+                    <option value="VIDEO_PREROLL">Video Pre-Roll</option>
+                    <option value="TASK_FEED">Task Feed</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Priority (Weight)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value={placementForm.priority}
+                    onChange={(e) => setPlacementForm({ ...placementForm, priority: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Start Date (Optional)</label>
+                  <input
+                    type="datetime-local"
+                    value={placementForm.start_date}
+                    onChange={(e) => setPlacementForm({ ...placementForm, start_date: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>End Date (Optional)</label>
+                  <input
+                    type="datetime-local"
+                    value={placementForm.end_date}
+                    onChange={(e) => setPlacementForm({ ...placementForm, end_date: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>Initial Status</label>
+                <select
+                  value={placementForm.status}
+                  onChange={(e) => setPlacementForm({ ...placementForm, status: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                >
+                  <option value="ACTIVE">Active (Deliver immediately)</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="PAUSED">Paused</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" onClick={() => setIsPlacementModalOpen(false)} className="btn btn-secondary">Cancel</button>
+                <button type="submit" disabled={submitting || readyMediaForPlacement.length === 0} className="btn btn-primary">
+                  {submitting ? 'Assigning...' : 'Assign Placement'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

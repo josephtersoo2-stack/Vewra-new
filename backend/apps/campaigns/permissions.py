@@ -108,3 +108,27 @@ class IsCampaignMediaOwnerOrAdmin(permissions.BasePermission):
             return True
 
         return False
+
+
+class IsCampaignPlacementOwnerOrAdmin(permissions.BasePermission):
+    """
+    Object-level permission ensuring:
+    - Admins and staff have full access.
+    - Campaign owner can view, update, pause, disable, and restore their own placements.
+    - Another advertiser or normal user CANNOT modify or view non-public placements.
+    """
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated)
+
+    def has_object_permission(self, request, view, obj):
+        # obj is CampaignAdPlacement
+        if request.user.is_staff or getattr(request.user, 'role', '') == 'admin' or getattr(request.user, 'is_superuser', False):
+            return True
+
+        # Campaign owner
+        if obj.campaign.owner == request.user:
+            return True
+
+        return False
+
