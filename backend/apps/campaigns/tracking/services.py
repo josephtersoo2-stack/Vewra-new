@@ -100,7 +100,7 @@ class AdvertisementTrackingService:
         if ip_address:
             ip_hash = hashlib.sha256(ip_address.encode("utf-8")).hexdigest()
 
-        return AdvertisementImpression.objects.create(
+        imp = AdvertisementImpression.objects.create(
             campaign=campaign,
             placement=placement,
             media=media,
@@ -110,6 +110,23 @@ class AdvertisementTrackingService:
             ip_hash=ip_hash,
             user_agent=user_agent[:500] if user_agent else "",
         )
+
+        try:
+            from apps.advertising.billing.services import AdvertiserBillingService
+            from apps.advertising.billing.models import ChargeEventType
+            AdvertiserBillingService.process_advertisement_charge(
+                campaign_id=campaign.id,
+                event_type=ChargeEventType.IMPRESSION,
+                reference_id=str(imp.id),
+                session_id=imp.session_id,
+                ip_address=ip_address,
+                device_id=device_id,
+                user=user,
+            )
+        except Exception:
+            pass
+
+        return imp
 
     @staticmethod
     def record_click(
@@ -174,7 +191,7 @@ class AdvertisementTrackingService:
         if existing_click:
             return existing_click
 
-        return AdvertisementClick.objects.create(
+        click = AdvertisementClick.objects.create(
             impression=impression,
             campaign=campaign,
             media=media,
@@ -182,6 +199,21 @@ class AdvertisementTrackingService:
             click_type=click_type,
             session_id=session_id,
         )
+
+        try:
+            from apps.advertising.billing.services import AdvertiserBillingService
+            from apps.advertising.billing.models import ChargeEventType
+            AdvertiserBillingService.process_advertisement_charge(
+                campaign_id=campaign.id,
+                event_type=ChargeEventType.CLICK,
+                reference_id=str(click.id),
+                session_id=session_id,
+                user=user,
+            )
+        except Exception:
+            pass
+
+        return click
 
     @staticmethod
     def record_video_progress(
@@ -245,6 +277,7 @@ class AdvertisementTrackingService:
 
         # Authoritative Server-side completion calculation
         duration = float(media.duration_seconds or 0)
+        was_completed = engagement.completed
         if duration > 0:
             percentage = min(100.0, (watched_seconds_float / duration) * 100.0)
             engagement.completion_percentage = round(percentage, 2)
@@ -256,6 +289,25 @@ class AdvertisementTrackingService:
                 engagement.completed = True
 
         engagement.save()
+
+        # Trigger Video Completion monetisation charge if completed for the first time
+        if engagement.completed and not was_completed:
+            try:
+                from apps.advertising.billing.services import AdvertiserBillingService
+                from apps.advertising.billing.models import ChargeEventType
+                AdvertiserBillingService.process_advertisement_charge(
+                    campaign_id=campaign.id,
+                    event_type=ChargeEventType.VIDEO_COMPLETION,
+                    reference_id=str(engagement.id),
+                    session_id=session_id,
+                    user=user,
+                    watched_seconds=watched_seconds_float,
+                    video_duration=duration,
+                    completion_percentage=float(engagement.completion_percentage),
+                )
+            except Exception:
+                pass
+
         return engagement
 
     @staticmethod

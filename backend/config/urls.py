@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/v1/ad-placements/', __import__('apps.campaigns.views', fromlist=['CampaignPlacementAllListView']).CampaignPlacementAllListView.as_view(), name='all-ad-placements'),
     path('api/v1/ads/', include('apps.campaigns.tracking.ad_urls')),
     path('api/v1/advertiser/analytics/', __import__('apps.campaigns.tracking.views', fromlist=['AdvertiserOverviewAnalyticsView']).AdvertiserOverviewAnalyticsView.as_view(), name='advertiser-analytics'),
+    path('api/v1/advertiser/', include('apps.advertising.billing.urls')),
     path('api/v1/admin/', include('apps.admin_api.urls')),
 ]
 

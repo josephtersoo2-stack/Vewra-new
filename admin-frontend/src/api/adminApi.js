@@ -282,6 +282,40 @@ export const adminApi = {
     const res = await apiClient.get('/advertiser/analytics/');
     return res.data;
   },
+
+  // Advertiser Billing, Monetisation & Financial Reports (Phase 5.5 Step 5)
+  getAdvertiserWallet: async () => {
+    const res = await apiClient.get('/advertiser/wallet/');
+    return res.data;
+  },
+  fundAdvertiserWallet: async (amount, currency = 'USD') => {
+    const res = await apiClient.post('/advertiser/wallet/fund/', { amount, currency });
+    return res.data;
+  },
+  getBillingHistory: async (params = {}) => {
+    const res = await apiClient.get('/advertiser/billing/history/', { params });
+    return res.data;
+  },
+  getCampaignSpending: async (campaignId) => {
+    const res = await apiClient.get(`/campaigns/${campaignId}/spending/`);
+    return res.data;
+  },
+  configureCampaignBudget: async (campaignId, data) => {
+    const res = await apiClient.post(`/campaigns/${campaignId}/budget/`, data);
+    return res.data;
+  },
+  getAdvertiserReports: async (params = {}) => {
+    const res = await apiClient.get('/advertiser/reports/', { params });
+    return res.data;
+  },
+  exportAdvertiserReportCsv: async (params = {}) => {
+    const res = await apiClient.get('/advertiser/reports/export/', {
+      params: { ...params, format: 'csv' },
+      responseType: 'blob',
+    });
+    return res.data;
+  },
 };
+
 
 

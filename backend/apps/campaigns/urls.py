@@ -38,4 +38,7 @@ urlpatterns = [
     path("placement/<uuid:pk>/restore/", CampaignPlacementRestoreView.as_view(), name="campaign-placement-restore"),
     # Analytics endpoints
     path("<uuid:campaign_id>/analytics/", __import__("apps.campaigns.tracking.views", fromlist=["CampaignAnalyticsView"]).CampaignAnalyticsView.as_view(), name="campaign-analytics"),
+    # Spending & Budget endpoints (Phase 5.5 Step 5)
+    path("<uuid:campaign_id>/spending/", __import__("apps.advertising.billing.views", fromlist=["CampaignSpendingView"]).CampaignSpendingView.as_view(), name="campaign-spending"),
+    path("<uuid:campaign_id>/budget/", __import__("apps.advertising.billing.views", fromlist=["CampaignBudgetConfigureView"]).CampaignBudgetConfigureView.as_view(), name="campaign-budget-configure"),
 ]

@@ -1,0 +1,328 @@
+# VEWRA Phase 5.5 Step 5: Advertiser Reporting, Attribution & Monetisation Controls Implementation Plan
+
+## Objective
+
+Build the Advertiser Reporting and Monetisation Layer that connects:
+
+Campaign → Advertisement Delivery → User Engagement → Billing →
+Advertiser Dashboard
+
+This phase converts advertisement tracking data into a revenue
+management system where advertisers can understand performance, control
+spending, and prepare VEWRA for scalable monetisation.
+
+------------------------------------------------------------------------
+
+# STEP 5.1 Backend: Advertiser Billing & Attribution Foundation
+
+## Backend Structure
+
+Location:
+
+`backend/apps/advertising/billing/`
+
+Structure:
+
+    billing/
+    ├── models.py
+    ├── services.py
+    ├── serializers.py
+    ├── views.py
+    ├── urls.py
+    └── tests/
+
+## Database Models
+
+### AdvertiserWallet
+
+Purpose: Track advertiser funds.
+
+Fields:
+
+-   advertiser
+-   balance
+-   currency
+-   total_spent
+-   created_at
+-   updated_at
+
+------------------------------------------------------------------------
+
+### CampaignBudget
+
+Purpose: Control campaign spending.
+
+Fields:
+
+-   campaign
+-   daily_budget
+-   total_budget
+-   spent_amount
+-   start_date
+-   end_date
+-   status
+
+------------------------------------------------------------------------
+
+### AdvertisementCharge
+
+Purpose: Record every billable advertisement event.
+
+Fields:
+
+-   campaign
+-   advertiser
+-   event_type
+-   amount
+-   timestamp
+
+Event types:
+
+-   impression
+-   click
+-   video_completion
+
+------------------------------------------------------------------------
+
+# STEP 5.2 Monetisation Rules Engine
+
+Create:
+
+`advertising/billing/services.py`
+
+Implement billing calculations.
+
+## Cost Per Impression (CPM)
+
+Example:
+
+1000 impressions = \$5
+
+Function:
+
+`calculate_impression_cost()`
+
+------------------------------------------------------------------------
+
+## Cost Per Click (CPC)
+
+Example:
+
+1 click = \$0.05
+
+Function:
+
+`calculate_click_cost()`
+
+------------------------------------------------------------------------
+
+## Video Completion Billing
+
+Example:
+
+95% watched = billable completion
+
+Function:
+
+`calculate_video_completion_cost()`
+
+------------------------------------------------------------------------
+
+# STEP 5.3 Automatic Campaign Budget Protection
+
+Before advertisement delivery, system checks:
+
+1.  Is campaign active?
+2.  Does advertiser have sufficient balance?
+3.  Has budget limit been reached?
+4.  Is campaign date valid?
+
+If validation fails:
+
+Stop advertisement delivery.
+
+------------------------------------------------------------------------
+
+# STEP 5.4 Advertiser Dashboard Upgrade
+
+Upgrade dashboard navigation:
+
+    Campaigns
+
+    Analytics
+
+    Billing
+
+    Reports
+
+    Invoices
+
+## Dashboard Metrics
+
+### Spending Overview
+
+-   Total Spend
+-   Remaining Budget
+
+### Cost Performance
+
+-   CPM
+-   CPC
+
+### ROI Tracking
+
+-   Views Generated
+-   Clicks Generated
+-   Conversions
+
+------------------------------------------------------------------------
+
+# STEP 5.5 Campaign Financial Report
+
+Create downloadable reports.
+
+Formats:
+
+-   PDF
+-   CSV
+
+Report includes:
+
+-   Campaign Name
+-   Date Range
+-   Total Impressions
+-   Total Clicks
+-   CTR
+-   Video Completion Rate
+-   Amount Spent
+-   Remaining Budget
+-   Performance Rating
+
+------------------------------------------------------------------------
+
+# STEP 5.6 Flutter Mobile Integration
+
+Update:
+
+`mobile/lib/features/campaigns/`
+
+Add advertisement intelligence:
+
+    High paying ads
+            ↓
+    Premium campaigns
+            ↓
+    Normal campaigns
+
+Extend tracking:
+
+Current:
+
+-   Impression
+-   Click
+-   Video Progress
+
+Add:
+
+-   Completed View
+-   Conversion Event
+-   Reward Eligibility
+
+------------------------------------------------------------------------
+
+# STEP 5.7 Anti-Fraud Protection
+
+Implement protection against:
+
+-   Duplicate impressions
+-   Duplicate clicks
+-   Artificial refreshing
+-   Device farming
+-   Suspicious viewing behaviour
+
+Create:
+
+`FraudScoreService`
+
+Monitor:
+
+-   Excessive clicks
+-   Very short watch duration
+-   Repeated impressions
+-   Abnormal device patterns
+
+------------------------------------------------------------------------
+
+# STEP 5.8 Testing Requirements
+
+## Backend Tests
+
+Add:
+
+-   Advertiser wallet tests
+-   Budget limit tests
+-   Billing calculation tests
+-   Invoice generation tests
+-   Fraud detection tests
+
+Expected:
+
+All backend tests passing.
+
+------------------------------------------------------------------------
+
+## Flutter Tests
+
+Add:
+
+-   Advertisement billing state tests
+-   Tracking regression tests
+
+------------------------------------------------------------------------
+
+## React Tests
+
+Verify:
+
+-   Analytics page works
+-   Billing page works
+-   Report export works
+
+------------------------------------------------------------------------
+
+# STEP 5.9 Git Commit
+
+Final commit:
+
+    feat: implement advertiser billing, reporting and monetisation controls (Phase 5.5 Step 5)
+
+------------------------------------------------------------------------
+
+# Expected Result After Step 5
+
+VEWRA will have:
+
+-   Advertiser accounts
+-   Campaign budgets
+-   Automatic charging system
+-   Spending limits
+-   Financial reports
+-   Advertiser performance dashboard
+-   Basic fraud protection
+-   Foundation for real revenue generation
+
+------------------------------------------------------------------------
+
+# Next Phase
+
+After Step 5:
+
+## Phase 5.5 Step 6: Advertiser Marketplace + Self-Service Campaign Creation
+
+This will allow businesses to:
+
+-   Register as advertisers
+-   Fund accounts
+-   Upload advertisements
+-   Select audiences
+-   Launch campaigns independently

@@ -133,4 +133,53 @@ class AdvertisementTrackingService {
     }
     throw Exception('Failed to load advertiser overview analytics.');
   }
+
+  /// Records conversion action telemetry for an advertisement campaign.
+  Future<Map<String, dynamic>?> recordConversionEvent({
+    required String campaignId,
+    required String conversionType,
+    String? referenceId,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'campaign_id': campaignId,
+        'conversion_type': conversionType,
+      };
+      if (referenceId != null && referenceId.isNotEmpty) {
+        payload['reference_id'] = referenceId;
+      }
+      if (metadata != null && metadata.isNotEmpty) {
+        payload['metadata'] = metadata;
+      }
+
+      final response = await _apiClient.dio.post(
+        '${ApiConstants.campaigns}$campaignId/conversion/',
+        data: payload,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data as Map<String, dynamic>?;
+      }
+    } catch (e) {
+      debugPrint('[AdTrackingService] Failed to record conversion event: $e');
+    }
+    return null;
+  }
+
+  /// Evaluates whether an ad engagement fulfills monetisation / reward eligibility (>=95% watch or verified click).
+  bool evaluateRewardEligibility({
+    required double watchedSeconds,
+    required double videoDuration,
+    required bool clicked,
+  }) {
+    if (videoDuration > 0 && (watchedSeconds / videoDuration) >= 0.95) {
+      return true;
+    }
+    if (clicked) {
+      return true;
+    }
+    return false;
+  }
 }
+
